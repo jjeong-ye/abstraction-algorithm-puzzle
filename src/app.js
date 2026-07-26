@@ -8,10 +8,12 @@ const main = document.getElementById("main");
 const titleEl = document.getElementById("topbar-title");
 let route = { screen: "start" };
 
-// 교사 모드는 '교사용 빌드(teacher.html)'에서만 활성화됨.
-// 학생용 index.html 에는 교사 버튼이 없고 이 플래그도 false → 교사 기능 전부 비활성.
-const TEACHER_ENABLED = (typeof window !== "undefined") && window.TEACHER_MODE_ENABLED === true;
-function teacherOn() { return TEACHER_ENABLED && Store.getSettings().teacher; }
+// 교사 모드: 학생과 같은 사이트에서 '🎓 교사' 버튼 + 코드로 켠다.
+// (클라이언트 측 간이 잠금 — 진짜 보안은 아니지만 학생이 무심코 정답을 보는 것을 막는 용도)
+// ▼▼▼ 교사 코드: 원하는 값으로 바꾸세요 (학생이 모르게) ▼▼▼
+const TEACHER_CODE = "7755";
+// ▲▲▲ 여기만 고치면 됩니다 ▲▲▲
+function teacherOn() { return Store.getSettings().teacher === true; }
 
 // ---------------- 설정/상단바 ----------------
 function applySettings() {
@@ -22,17 +24,35 @@ function applySettings() {
   document.getElementById("btn-motion").setAttribute("aria-pressed", s.motion ? "true" : "false");
   const tb = document.getElementById("btn-teacher");
   if (tb) {
-    if (!TEACHER_ENABLED) { tb.style.display = "none"; }
-    else { tb.setAttribute("aria-pressed", s.teacher ? "true" : "false"); tb.textContent = s.teacher ? "🎓 교사(켬)" : "🎓 교사"; }
+    tb.setAttribute("aria-pressed", s.teacher ? "true" : "false");
+    tb.textContent = s.teacher ? "🎓 교사(켬)" : "🎓 교사";
+    tb.classList.toggle("teacher-on", !!s.teacher);
   }
 }
 document.getElementById("btn-home").onclick = () => go({ screen: Store.getPlayer() ? "worlds" : "start" });
 document.getElementById("btn-sound").onclick = () => { Store.setSetting("sound", !Store.getSettings().sound); applySettings(); beep("click"); };
 document.getElementById("btn-motion").onclick = () => { Store.setSetting("motion", !Store.getSettings().motion); applySettings(); };
-if (TEACHER_ENABLED && document.getElementById("btn-teacher")) document.getElementById("btn-teacher").onclick = () => {
-  Store.setSetting("teacher", !Store.getSettings().teacher); applySettings();
-  toast(Store.getSettings().teacher ? "교사 모드 켜짐: 모든 해설을 바로 볼 수 있어요" : "교사 모드 꺼짐");
+if (document.getElementById("btn-teacher")) document.getElementById("btn-teacher").onclick = () => {
+  if (Store.getSettings().teacher) {
+    // 켜져 있으면 바로 끈다
+    Store.setSetting("teacher", false); applySettings();
+    toast("교사 모드 꺼짐");
+  } else {
+    // 꺼져 있으면 코드 확인 후 켠다
+    const code = prompt("교사 코드를 입력하세요");
+    if (code == null) return; // 취소
+    if (code.trim() === TEACHER_CODE) {
+      Store.setSetting("teacher", true); applySettings();
+      toast("교사 모드 켜짐: 모든 해설을 바로 볼 수 있어요", "good");
+    } else {
+      toast("교사 코드가 올바르지 않아요", "bad");
+      return;
+    }
+  }
+  // 현재 화면 다시 그려 해설 버튼 상태 반영
   if (route.screen === "stages") renderStages(route.world);
+  else if (route.screen === "worlds") renderWorlds();
+  else if (route.screen === "game") renderGame(route.stageId);
 };
 document.getElementById("btn-fullscreen").onclick = () => {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
@@ -78,11 +98,14 @@ function worldProgress(worldId) {
 function renderWorlds() {
   titleEl.textContent = `${Store.getPlayer()} 님의 모험`;
   const grid = el("div", { class: "world-grid" });
-  WORLDS.forEach(w => {
+  WORLDS.forEach((w, i) => {
     const { done, total } = worldProgress(w.id);
     grid.appendChild(el("div", { class: "world-card " + w.color, role: "button", tabindex: "0",
       onclick: () => go({ screen: "stages", world: w.id }), onkeydown: e => { if (e.key === "Enter") go({ screen: "stages", world: w.id }); } }, [
-      el("div", { class: "emoji", text: w.emoji }),
+      el("div", { class: "world-head" }, [
+        el("span", { class: "world-num", text: String(i), "aria-label": `${i}단계` }),
+        el("div", { class: "emoji", text: w.emoji }),
+      ]),
       el("h2", { text: w.name }),
       el("p", { text: w.desc }),
       el("div", { class: "prog", text: `진행: ${done} / ${total} 스테이지` }),
@@ -91,9 +114,9 @@ function renderWorlds() {
   });
   const totalDone = PROBLEMS.filter(p => Store.getRecord(p.id).cleared).length;
   main.append(
-    el("h2", { text: "월드를 선택하세요" }),
+    el("h2", { text: "단계를 선택하세요" }),
     grid,
-    el("p", { class: "status-line", text: `전체 진행: ${totalDone} / 24 스테이지 완료` }),
+    el("p", { class: "status-line", text: `전체 진행: ${totalDone} / ${PROBLEMS.length} 스테이지 완료` }),
     el("div", { style: "text-align:center;margin-top:10px" }, [
       el("button", { class: "btn ghost small", text: "🗂 학습 기록 보기", onclick: showRecords }),
       el("button", { class: "btn ghost small", text: "♻ 기록 초기화", onclick: () => { if (confirm("모든 학습 기록을 지울까요?")) { Store.reset(); toast("초기화됨"); go({ screen: "start" }); } } }),
