@@ -252,3 +252,63 @@ body{
 .cmp-col h4{margin:.2em 0 .4em}
 .result-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;position:sticky;bottom:0;background:#fff;padding:10px 0}
 @media (max-width:640px){ .compare{grid-template-columns:1fr} }
+
+/* ===================================================== */
+/* 가독성 강화 — 글자를 더 크게·진하게·또렷하게 (교실/프로젝터용) */
+/* ===================================================== */
+:root{
+  --ink:#231f1a;        /* 본문 더 진하게(대비 ↑) */
+  --ink-soft:#4b463d;   /* 보조 글자도 더 진하게 */
+}
+body{ font-size:20px; line-height:1.72; letter-spacing:-0.01em; -webkit-font-smoothing:antialiased; }
+
+/* 제목·상단 */
+.topbar-title{ font-size:1.5rem; font-weight:900; }
+.hero h1{ font-size:3.2rem; font-weight:900; letter-spacing:-0.02em; }
+.hero p{ font-size:1.35rem; color:var(--ink); }
+.panel h2{ font-size:1.8rem; font-weight:900; }
+.world-card h2{ font-size:1.55rem; font-weight:900; }
+.world-card p{ font-size:1.12rem; color:var(--ink); }
+
+/* 문제·상태·힌트·해설 (읽는 글자) */
+.problem-text{ font-size:1.32rem; font-weight:600; color:var(--ink); line-height:1.8; border-left-width:8px; }
+.status-line{ font-size:1.28rem; }
+.goal-tag{ font-size:1.08rem; font-weight:900; }
+.hint-box{ font-size:1.2rem; line-height:1.75; border-width:3px; }
+.explain{ font-size:1.15rem; line-height:1.8; }
+.explain p, .result-full p, .result-full li{ font-size:1.12rem; }
+.res-h{ font-size:1.3rem; font-weight:900; }
+.verdict{ font-size:1.9rem; }
+
+/* 버튼·선택지·카드 (누르는 글자) */
+.btn{ font-size:1.28rem; font-weight:900; }
+.btn.small{ font-size:1.1rem; font-weight:800; }
+.topbar-btn{ font-size:1.06rem; font-weight:800; }
+.opt{ font-size:1.2rem; font-weight:900; }
+.cond{ font-size:1.15rem; line-height:1.65; }
+.stage-card h3{ font-size:1.32rem; font-weight:900; }
+.stage-card .sid{ font-size:.92rem; }
+.stage-card .meta{ font-size:.95rem; }
+.chip{ font-size:.85rem; font-weight:700; }
+
+/* 입력·표·점수 */
+.namebox label{ font-size:1.2rem; }
+.namebox input, .reflect{ font-size:1.22rem; }
+.proc-table{ font-size:1.02rem; }
+.proc-table th{ font-size:1.02rem; }
+.score-chip b{ font-size:2.1rem; }
+.score-chip span{ font-size:1rem; font-weight:700; }
+
+/* 게임 보드 안 글자(원반·동전·칸·항아리 수치) 또렷하게 */
+.gcell{ font-size:1.15rem; }
+.coin{ font-size:1.05rem; }
+.disk{ font-size:.95rem; }
+.jug .cap{ font-size:1.05rem; }
+
+@media (max-width:640px){
+  body{ font-size:18px; }
+  .hero h1{ font-size:2.3rem; }
+  .problem-text{ font-size:1.18rem; }
+  .status-line{ font-size:1.12rem; }
+  .opt{ font-size:1.08rem; }
+}

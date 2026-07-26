@@ -8,6 +8,11 @@ const main = document.getElementById("main");
 const titleEl = document.getElementById("topbar-title");
 let route = { screen: "start" };
 
+// 교사 모드는 '교사용 빌드(teacher.html)'에서만 활성화됨.
+// 학생용 index.html 에는 교사 버튼이 없고 이 플래그도 false → 교사 기능 전부 비활성.
+const TEACHER_ENABLED = (typeof window !== "undefined") && window.TEACHER_MODE_ENABLED === true;
+function teacherOn() { return TEACHER_ENABLED && Store.getSettings().teacher; }
+
 // ---------------- 설정/상단바 ----------------
 function applySettings() {
   const s = Store.getSettings();
@@ -15,13 +20,16 @@ function applySettings() {
   document.getElementById("btn-sound").setAttribute("aria-pressed", s.sound ? "true" : "false");
   document.getElementById("btn-sound").textContent = s.sound ? "🔊 소리" : "🔇 소리";
   document.getElementById("btn-motion").setAttribute("aria-pressed", s.motion ? "true" : "false");
-  document.getElementById("btn-teacher").setAttribute("aria-pressed", s.teacher ? "true" : "false");
-  document.getElementById("btn-teacher").textContent = s.teacher ? "🎓 교사(켬)" : "🎓 교사";
+  const tb = document.getElementById("btn-teacher");
+  if (tb) {
+    if (!TEACHER_ENABLED) { tb.style.display = "none"; }
+    else { tb.setAttribute("aria-pressed", s.teacher ? "true" : "false"); tb.textContent = s.teacher ? "🎓 교사(켬)" : "🎓 교사"; }
+  }
 }
 document.getElementById("btn-home").onclick = () => go({ screen: Store.getPlayer() ? "worlds" : "start" });
 document.getElementById("btn-sound").onclick = () => { Store.setSetting("sound", !Store.getSettings().sound); applySettings(); beep("click"); };
 document.getElementById("btn-motion").onclick = () => { Store.setSetting("motion", !Store.getSettings().motion); applySettings(); };
-document.getElementById("btn-teacher").onclick = () => {
+if (TEACHER_ENABLED && document.getElementById("btn-teacher")) document.getElementById("btn-teacher").onclick = () => {
   Store.setSetting("teacher", !Store.getSettings().teacher); applySettings();
   toast(Store.getSettings().teacher ? "교사 모드 켜짐: 모든 해설을 바로 볼 수 있어요" : "교사 모드 꺼짐");
   if (route.screen === "stages") renderStages(route.world);
@@ -112,7 +120,7 @@ function renderStages(worldId) {
   titleEl.textContent = w.name;
   const list = PROBLEMS.filter(p => p.world === worldId);
   const grid = el("div", { class: "stage-list" });
-  const teacher = Store.getSettings().teacher;
+  const teacher = teacherOn();
   list.forEach(p => {
     const r = Store.getRecord(p.id);
     const stars = { basic: "★☆☆", normal: "★★☆", challenge: "★★★" }[p.difficulty];
@@ -149,7 +157,7 @@ function openExplanation(problem, teacher) {
     if (rec.lastSubmission.processTable) { content.append(el("h4", { text: "나의 풀이 과정" }), renderProcessTable(rec.lastSubmission.processTable)); }
     if (rec.lastSubmission.modelTable) { content.append(el("h4", { text: "모범/최적 풀이" }), renderProcessTable(rec.lastSubmission.modelTable)); }
   }
-  content.append(renderFullExplanation(problem, { teacher: teacher || Store.getSettings().teacher }));
+  content.append(renderFullExplanation(problem, { teacher: teacher || teacherOn() }));
   modal("📖 " + problem.title + " · 해설", content);
 }
 
@@ -214,8 +222,8 @@ function renderGame(stageId) {
   // 툴바 (완전 해설은 제출 후에만 열림)
   const alreadySubmitted = Store.getRecord(p.id).submitted;
   const explainBtn = el("button", { class: "btn ghost small", text: "📖 정답·해설(제출 후)",
-    disabled: (S.explanationUnlocked || alreadySubmitted || Store.getSettings().teacher) ? null : "true",
-    onclick: () => { if (!S.hasSubmitted && !alreadySubmitted && !Store.getSettings().teacher) { toast("문제를 '제출'하면 정답과 해설이 열려요", ""); return; } openExplanation(p, Store.getSettings().teacher); } });
+    disabled: (S.explanationUnlocked || alreadySubmitted || teacherOn()) ? null : "true",
+    onclick: () => { if (!S.hasSubmitted && !alreadySubmitted && !teacherOn()) { toast("문제를 '제출'하면 정답과 해설이 열려요", ""); return; } openExplanation(p, teacherOn()); } });
   const toolbar = el("div", { class: "stage-toolbar" }, [
     el("button", { class: "btn ghost small", text: "← 목록", onclick: () => go({ screen: "stages", world: p.world }) }),
     hintBtn,
@@ -299,7 +307,7 @@ function renderResult(problem, res, score) {
     el("button", { class: "btn ghost small", text: "🔄 다시 풀기", onclick: () => { closeM(); go({ screen: "game", stageId: problem.id }); } }),
     nextP ? el("button", { class: "btn green small", text: "다음 문제 →", onclick: () => { closeM(); go({ screen: "game", stageId: nextP.id }); } })
       : el("button", { class: "btn green small", text: "월드로 →", onclick: () => { closeM(); go({ screen: "stages", world: problem.world }); } }),
-    el("button", { class: "btn secondary small", text: "📖 완전 해설(교재정보)", onclick: () => openExplanation(problem, Store.getSettings().teacher) }),
+    el("button", { class: "btn secondary small", text: "📖 완전 해설", onclick: () => openExplanation(problem, teacherOn()) }),
   ]));
 
   const closeM = modal("📊 채점 & 해설", box);
