@@ -39,7 +39,7 @@ if (document.getElementById("btn-teacher")) document.getElementById("btn-teacher
     toast("교사 모드 꺼짐");
   } else {
     // 꺼져 있으면 코드 확인 후 켠다
-    const code = prompt("교사 코드를 입력하세요");
+    const code = prompt("교사 코드를 입력하세요\n(잊으셨다면: src/app.js 맨 위 TEACHER_CODE 값 확인)");
     if (code == null) return; // 취소
     if (code.trim() === TEACHER_CODE) {
       Store.setSetting("teacher", true); applySettings();
