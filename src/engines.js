@@ -715,8 +715,9 @@ ENGINES.nim = function (host, problem) {
   }
   function cpu() { let t = bestTake(remaining, cfg.maxTake, cfg.loseOnLast); if (t === 0) t = 1; t = Math.min(t, remaining, cfg.maxTake); if (take(t, "cpu")) return; turn = "you"; render(); }
   const btns = el("div", { class: "board" });
-  [1, 2, 3].forEach(n => btns.appendChild(el("button", { class: "btn", text: `${n}개`, onclick: () => { if (over || turn !== "you" || n > remaining) return; if (take(n, "you")) return; turn = "cpu"; render(); setTimeout(cpu, 450); } })));
-  host.append(el("p", { class: "status-line", text: "1~3개씩 번갈아 가져가요. 마지막 💣을 가져가면 패배! 게임이 끝나면 결과를 제출하세요." }), board, btns, status, logBox);
+  const maxTake = cfg.maxTake || 3;
+  for (let n = 1; n <= maxTake; n++) btns.appendChild(el("button", { class: "btn", text: `${n}개`, onclick: () => { if (over || turn !== "you" || n > remaining) return; if (take(n, "you")) return; turn = "cpu"; render(); setTimeout(cpu, 450); } }));
+  host.append(el("p", { class: "status-line", text: `1~${maxTake}개씩 번갈아 가져가요. 마지막 💣을 가져가면 패배! 게임이 끝나면 결과를 제출하세요.` }), board, btns, status, logBox);
   init();
   return {
     submitLabel: "플레이 결과 제출하기",

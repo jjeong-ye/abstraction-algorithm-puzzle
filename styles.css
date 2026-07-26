@@ -90,6 +90,7 @@ body{
   border:4px solid transparent;cursor:pointer;text-align:left;font-family:var(--font);
 }
 .world-card:hover{transform:translateY(-3px)}
+.world-card.w0{border-color:var(--pink)}
 .world-card.w1{border-color:var(--accent)}
 .world-card.w2{border-color:var(--green)}
 .world-card.w3{border-color:var(--purple)}
