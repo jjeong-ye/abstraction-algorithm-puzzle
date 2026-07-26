@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>자동 검증 테스트 · 퍼즐 탐험대</title>
+  <style>
+    body{font-family:"맑은 고딕",Malgun Gothic,system-ui,sans-serif;padding:20px;background:#fdf6e3;color:#2d2a26}
+    h1{color:#e5701f}
+    table{border-collapse:collapse;width:100%;background:#fff;margin:8px 0}
+    th,td{border:1px solid #e6ddca;padding:6px 9px;text-align:left;font-size:13px}
+    th{background:#ff8c42;color:#fff}
+    .pass{color:#2f9e44;font-weight:800}
+    .fail{color:#c92a2a;font-weight:800}
+    .summary{font-size:1.3rem;font-weight:800;margin:12px 0;padding:12px;border-radius:12px}
+    .summary.ok{background:#ebfbee;border:2px solid #51cf66}
+    .summary.bad{background:#fff0f0;border:2px solid #ff6b6b}
+    .note{background:#fff9db;border:1px solid #ffd43b;padding:10px 14px;border-radius:10px;margin:10px 0}
+  </style>
+</head>
+<body>
+  <h1>🧪 자동 검증 테스트</h1>
+  <p>solver 정답 검증 + 24개 스테이지의 '제출 전 정답 미노출 / 제출 게이트 / 풀이 과정 기록' 규칙을 검사합니다.</p>
+  <div class="summary" id="summary">실행 중…</div>
+
+  <h2>❌ 실패 항목</h2>
+  <table id="failtbl"><thead><tr><th>스테이지/기능</th><th>예상</th><th>실제</th></tr></thead><tbody></tbody></table>
+
+  <div class="note">
+    <b>수동 확인 항목(자동화 불가):</b>
+    (12) 모바일 화면에서 제출 버튼과 해설이 겹치지 않는지,
+    (13) 키보드(Tab→Enter)만으로 제출 버튼 사용 가능한지 →
+    <b>MANUAL-TEST-CHECKLIST.md</b> 로 점검하세요. (제출 버튼은 &lt;button&gt;·Enter/Space 처리, .submit-bar/.result-actions는 sticky+반응형으로 구현됨)
+  </div>
+
+  <h2>전체 결과</h2>
+  <table id="tbl"><thead><tr><th>#</th><th>테스트</th><th>실제</th><th>예상</th><th>판정</th></tr></thead><tbody></tbody></table>
+
+  <div id="modal-root"></div><div id="toast-root"></div>
+  <script type="module">
+    import { runTests } from "./src/verification/tests.js";
+    let rows = [];
+    try { rows = runTests(); }
+    catch (e) { document.getElementById("summary").textContent = "실행 오류: " + e.message; throw e; }
+    const tb = document.querySelector("#tbl tbody"), fb = document.querySelector("#failtbl tbody");
+    let pass = 0;
+    const failedStages = new Set();
+    rows.forEach((r, i) => {
+      if (r.pass) pass++;
+      else {
+        const m = r.name.match(/\[([^\]]+)\]/); if (m) failedStages.add(m[1]);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${r.name}</td><td>${r.exp}</td><td>${r.got}</td>`;
+        fb.appendChild(tr);
+      }
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${i + 1}</td><td>${r.name}</td><td>${r.got}</td><td>${r.exp}</td><td class="${r.pass ? "pass" : "fail"}">${r.pass ? "✅" : "❌"}</td>`;
+      tb.appendChild(tr);
+    });
+    const fail = rows.length - pass;
+    const sum = document.getElementById("summary");
+    sum.className = "summary " + (fail === 0 ? "ok" : "bad");
+    sum.innerHTML = `총 ${rows.length}개 · 통과 ${pass} · 실패 ${fail}` +
+      (fail === 0 ? " 🎉 전부 통과!" : `<br>실패한 스테이지/그룹: ${[...failedStages].join(", ")}`);
+  </script>
+</body>
+</html>

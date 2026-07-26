@@ -1,0 +1,7 @@
+{
+  "name": "puzzle-explorer",
+  "version": "1.0.0",
+  "description": "추상화와 알고리즘 학습용 웹 퍼즐 게임 (2022 개정 중학교 정보)",
+  "type": "module",
+  "private": true
+}
