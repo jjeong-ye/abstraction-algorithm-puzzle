@@ -279,22 +279,32 @@ ENGINES.mobile = function (host, problem) {
 };
 function buildMobileSVG(tree) {
   const NS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(NS, "svg"); svg.setAttribute("class", "mobile-svg"); svg.setAttribute("viewBox", "0 0 520 260");
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "mobile-svg"); svg.setAttribute("viewBox", "0 0 520 175");
+  const mk = (tag, a) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const vline = (x, y1, y2, w) => svg.appendChild(mk("line", { x1: x, y1: y1, x2: x, y2: y2, stroke: "#495057", "stroke-width": w || 2 }));
+  // (x,y): 이 노드가 '매달리는' 윗점. 항상 그 점에서 아래로 연결선을 그린다.
   function draw(node, x, y, span) {
     if (node.type === "leaf") {
-      const c = document.createElementNS(NS, "circle"); c.setAttribute("cx", x); c.setAttribute("cy", y + 30); c.setAttribute("r", 16); c.setAttribute("fill", node.unknown ? "#ffd43b" : "#ff8c42"); c.setAttribute("stroke", "#7a5230"); c.setAttribute("stroke-width", 2);
-      const line = document.createElementNS(NS, "line"); line.setAttribute("x1", x); line.setAttribute("y1", y); line.setAttribute("x2", x); line.setAttribute("y2", y + 14); line.setAttribute("stroke", "#7a5230"); line.setAttribute("stroke-width", 2);
-      const t = document.createElementNS(NS, "text"); t.setAttribute("x", x); t.setAttribute("y", y + 36); t.setAttribute("text-anchor", "middle"); t.setAttribute("font-weight", "800"); t.setAttribute("font-size", "14"); t.textContent = node.unknown ? "?" : node.w; if (node.unknown) t.setAttribute("data-unknown", "1");
-      svg.append(line, c, t); return;
+      const cy = y + 34;
+      vline(x, y, cy - 18);                                   // 매다는 줄
+      svg.appendChild(mk("circle", { cx: x, cy: cy, r: 18, fill: node.unknown ? "#ffd43b" : "#ff8c42", stroke: "#7a5230", "stroke-width": 2 }));
+      const t = mk("text", { x: x, y: cy + 5, "text-anchor": "middle", "font-weight": "800", "font-size": "15" });
+      t.textContent = node.unknown ? "?" : node.w; if (node.unknown) t.setAttribute("data-unknown", "1");
+      svg.appendChild(t); return;
     }
+    const barY = y + 20;
+    vline(x, y, barY);                                        // 부모점 → 이 막대(가운데) 연결선
     const lx = x - span, rx = x + span;
-    const bar = document.createElementNS(NS, "line"); bar.setAttribute("x1", lx); bar.setAttribute("y1", y); bar.setAttribute("x2", rx); bar.setAttribute("y2", y); bar.setAttribute("stroke", "#495057"); bar.setAttribute("stroke-width", 4);
-    const hang = document.createElementNS(NS, "line"); hang.setAttribute("x1", x); hang.setAttribute("y1", y - 24); hang.setAttribute("x2", x); hang.setAttribute("y2", y); hang.setAttribute("stroke", "#495057"); hang.setAttribute("stroke-width", 2);
-    const dl = document.createElementNS(NS, "text"); dl.setAttribute("x", (x + lx) / 2); dl.setAttribute("y", y - 6); dl.setAttribute("text-anchor", "middle"); dl.setAttribute("font-size", "12"); dl.textContent = "거리" + node.left.dist;
-    const dr = document.createElementNS(NS, "text"); dr.setAttribute("x", (x + rx) / 2); dr.setAttribute("y", y - 6); dr.setAttribute("text-anchor", "middle"); dr.setAttribute("font-size", "12"); dr.textContent = "거리" + node.right.dist;
-    svg.append(hang, bar, dl, dr); draw(node.left.node, lx, y + 44, span / 2); draw(node.right.node, rx, y + 44, span / 2);
+    svg.appendChild(mk("line", { x1: lx, y1: barY, x2: rx, y2: barY, stroke: "#343a40", "stroke-width": 5 }));  // 막대
+    const dl = mk("text", { x: (x + lx) / 2, y: barY - 7, "text-anchor": "middle", "font-size": "13", "font-weight": "700" }); dl.textContent = "거리 " + node.left.dist;
+    const dr = mk("text", { x: (x + rx) / 2, y: barY - 7, "text-anchor": "middle", "font-size": "13", "font-weight": "700" }); dr.textContent = "거리 " + node.right.dist;
+    svg.append(dl, dr);
+    draw(node.left.node, lx, barY, span / 2);                 // 왼쪽 끝에서 자식이 매달림
+    draw(node.right.node, rx, barY, span / 2);                // 오른쪽 끝에서 자식이 매달림
   }
-  draw(tree, 260, 40, 120); return svg;
+  draw(tree, 260, 12, 130);
+  return svg;
 }
 function setUnknown(svg, v) { const t = svg.querySelector('text[data-unknown="1"]'); if (t) t.textContent = (v === "?" ? "?" : v + "g"); }
 
