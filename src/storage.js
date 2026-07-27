@@ -1,5 +1,5 @@
 // localStorage 기반 학습 기록 (서버 없음)
-const KEY = "puzzle-explorer-v1";
+const KEY = "puzzle-escape-v1";
 
 function load() {
   try { return JSON.parse(localStorage.getItem(KEY)) || {}; }

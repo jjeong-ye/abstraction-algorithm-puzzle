@@ -45,10 +45,12 @@ body{
 .topbar-title{font-weight:800;font-size:1.3rem;flex:1;text-shadow:0 2px 0 rgba(0,0,0,.15)}
 .topbar-tools{display:flex;gap:8px;flex-wrap:wrap}
 .topbar-btn{
+  display:inline-flex;align-items:center;gap:6px;
   border:none;border-radius:14px;padding:8px 14px;font-size:1rem;font-weight:700;
   background:#fff;color:var(--ink);cursor:pointer;font-family:var(--font);
   box-shadow:0 3px 0 rgba(0,0,0,.15);
 }
+.topbar-btn .ico{font-size:1.05em;line-height:1}
 .topbar-btn:hover{filter:brightness(1.05)}
 .topbar-btn[aria-pressed="true"]{background:var(--yellow)}
 .topbar-btn.teacher-on{background:var(--green);color:#fff}
@@ -450,3 +452,103 @@ body{ font-size:20px; line-height:1.72; letter-spacing:-0.01em; -webkit-font-smo
 .reduce-motion .submit-btn{ animation:none !important; }
 .reduce-motion .hero, .reduce-motion .panel,
 .reduce-motion .world-card, .reduce-motion .stage-card{ animation:none !important; }
+
+/* ===================================================== */
+/* 📱 모바일 상단바 — 좁은 화면에서 아이콘만, 제목은 말줄임    */
+/* ===================================================== */
+@media (max-width:640px){
+  /* 상단바 고정 해제: 스크롤하면 위로 올라가 사라짐 → 문제 영역이 넓게 보임 */
+  .topbar{ position:static; gap:6px; padding:8px 10px; flex-wrap:nowrap; }
+  .topbar-title{
+    flex:1; min-width:0;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    font-size:1.1rem;
+  }
+  .topbar-tools{ gap:6px; flex-wrap:nowrap; flex:none; }
+  .topbar-btn{ padding:9px 11px; font-size:1rem; }
+  /* 도구 버튼은 아이콘만 (글자 숨김) → 손가락으로 누르기 편한 크기 유지 */
+  .topbar-tools .topbar-btn .lbl{ display:none; }
+  .topbar-btn .ico{ font-size:1.3rem; }
+  /* '처음' 버튼은 글자 유지(가장 중요한 이동) */
+  #btn-home .lbl{ display:inline; }
+}
+
+/* 아주 좁은 화면(≤380px): '처음'도 아이콘만 */
+@media (max-width:380px){
+  #btn-home .lbl{ display:none; }
+  .topbar-title{ font-size:1rem; }
+}
+
+/* ===================================================== */
+/* 🚪 방탈출 모드 — 문 잠금/열림 UI                        */
+/* ===================================================== */
+
+/* 월드 탈출 진행 바 */
+.escape-bar{ height:16px; background:#e9dfc9; border-radius:10px; overflow:hidden; margin:6px 0 14px; border:2px solid var(--line); }
+.escape-bar>i{ display:block; height:100%; background:linear-gradient(90deg,var(--green),#8ce99a); transition:width .5s cubic-bezier(.2,1,.3,1); }
+
+/* 문 카드 공통 */
+.stage-card.door{ position:relative; overflow:hidden; }
+.door-badge{ position:absolute; top:10px; right:12px; font-size:1.6rem; line-height:1; }
+
+/* 지금 열 수 있는 '현재 문' — 반짝이며 강조 */
+.stage-card.current{
+  border-color:var(--primary); border-width:3px;
+  box-shadow:0 0 0 3px rgba(255,140,66,.25), var(--shadow);
+  animation: doorGlow 1.6s ease-in-out infinite;
+}
+@keyframes doorGlow{
+  0%,100%{ box-shadow:0 0 0 3px rgba(255,140,66,.22), var(--shadow); }
+  50%{ box-shadow:0 0 0 7px rgba(255,140,66,.10), var(--shadow); }
+}
+.stage-card.current .door-badge{ animation: keyWiggle 1.4s ease-in-out infinite; }
+@keyframes keyWiggle{ 0%,100%{transform:rotate(-8deg)} 50%{transform:rotate(12deg)} }
+
+/* 통과한 문 */
+.stage-card.cleared{ border-color:var(--green); background:#f4fff6; }
+
+/* 잠긴 문 — 흐리게, 클릭 불가 느낌 */
+.stage-card.locked{
+  background:#efe9dc; border-style:dashed; color:#9b9384; cursor:not-allowed;
+  filter:grayscale(.35); opacity:.75;
+}
+.stage-card.locked h3{ color:#8a8270; }
+.stage-card.locked:hover{ transform:none; box-shadow:var(--shadow); }
+.stage-card.locked .meta, .stage-card.locked .diff{ opacity:.8; }
+.lock-hint{ margin-top:8px; font-size:.95rem; color:#9a8f78; font-weight:700; }
+
+/* 잠긴 문 위 흐릿한 자물쇠 워터마크 */
+.stage-card.locked::after{
+  content:"🔒"; position:absolute; right:-6px; bottom:-10px;
+  font-size:4.4rem; opacity:.10; pointer-events:none;
+}
+
+.reduce-motion .stage-card.current{ animation:none !important; }
+.reduce-motion .stage-card.current .door-badge{ animation:none !important; }
+
+/* ===================================================== */
+/* 🚪 방탈출 — 월드 카드 부드러운 안내(강제 잠금 아님)       */
+/* ===================================================== */
+.world-status-badge{ position:absolute; top:10px; right:14px; font-size:1.7rem; line-height:1; }
+
+/* 완주한 월드 */
+.world-card.complete{ background:#f4fff6; border-color:var(--green); }
+
+/* 지금 추천하는 월드 — 반짝이며 "여기부터" */
+.world-card.suggested{
+  box-shadow:0 0 0 3px rgba(255,140,66,.25), var(--shadow);
+  animation: worldGlow 1.8s ease-in-out infinite;
+}
+@keyframes worldGlow{
+  0%,100%{ box-shadow:0 0 0 3px rgba(255,140,66,.22), var(--shadow); }
+  50%{ box-shadow:0 0 0 8px rgba(255,140,66,.09), var(--shadow); }
+}
+.world-card.suggested .world-status-badge{ animation: keyWiggle 1.4s ease-in-out infinite; }
+
+/* 순서상 뒤 + 아직 시작 안 한 월드 — 살짝 흐리게(그래도 클릭 가능) */
+.world-card.soft-lock{ filter:grayscale(.3); opacity:.82; }
+.world-card.soft-lock .prog{ color:#9a8f78; font-weight:700; }
+.world-card.soft-lock:hover{ filter:grayscale(0); opacity:1; } /* 올리면 또렷해짐 → 들어갈 수 있음을 암시 */
+
+.reduce-motion .world-card.suggested{ animation:none !important; }
+.reduce-motion .world-card.suggested .world-status-badge{ animation:none !important; }

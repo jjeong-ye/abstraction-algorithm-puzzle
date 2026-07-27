@@ -8,6 +8,28 @@ const main = document.getElementById("main");
 const titleEl = document.getElementById("topbar-title");
 let route = { screen: "start" };
 
+// ---------------- 방탈출: 난이도 정렬 & 문 잠금 ----------------
+const DIFF_RANK = { basic: 0, normal: 1, challenge: 2 };
+function idNum(id) { const m = String(id).match(/(\d+)\s*$/); return m ? parseInt(m[1], 10) : 0; }
+// 월드의 스테이지를 '난이도(기초→기본→도전)' 순으로 정렬해서 돌려준다.
+function stagesOfWorld(worldId) {
+  return PROBLEMS.filter(p => p.world === worldId).sort((a, b) => {
+    const d = (DIFF_RANK[a.difficulty] ?? 1) - (DIFF_RANK[b.difficulty] ?? 1);
+    return d !== 0 ? d : idNum(a.id) - idNum(b.id);
+  });
+}
+// 정렬된 목록에서 각 문의 잠금 상태를 계산.
+// 규칙: 첫 문은 항상 열림. 그 외에는 '바로 앞 문'을 통과(cleared)해야 열림.
+// (교사 모드면 모두 열림)
+function computeLocks(list) {
+  const teacher = teacherOn();
+  return list.map((p, i) => {
+    if (teacher) return false;
+    if (i === 0) return false;
+    return !Store.getRecord(list[i - 1].id).cleared;
+  });
+}
+
 // 교사 모드: 학생과 같은 사이트에서 '🎓 교사' 버튼 + 코드로 켠다.
 // (클라이언트 측 간이 잠금 — 진짜 보안은 아니지만 학생이 무심코 정답을 보는 것을 막는 용도)
 // ▼▼▼ 교사 코드: 원하는 값으로 바꾸세요 (학생이 모르게) ▼▼▼
@@ -19,13 +41,14 @@ function teacherOn() { return Store.getSettings().teacher === true; }
 function applySettings() {
   const s = Store.getSettings();
   document.body.classList.toggle("reduce-motion", !!s.motion);
-  document.getElementById("btn-sound").setAttribute("aria-pressed", s.sound ? "true" : "false");
-  document.getElementById("btn-sound").textContent = s.sound ? "🔊 소리" : "🔇 소리";
+  const sound = document.getElementById("btn-sound");
+  sound.setAttribute("aria-pressed", s.sound ? "true" : "false");
+  sound.querySelector(".ico").textContent = s.sound ? "🔊" : "🔇";
   document.getElementById("btn-motion").setAttribute("aria-pressed", s.motion ? "true" : "false");
   const tb = document.getElementById("btn-teacher");
   if (tb) {
     tb.setAttribute("aria-pressed", s.teacher ? "true" : "false");
-    tb.textContent = s.teacher ? "🎓 교사(켬)" : "🎓 교사";
+    tb.querySelector(".lbl").textContent = s.teacher ? "교사 ✓" : "교사";
     tb.classList.toggle("teacher-on", !!s.teacher);
   }
 }
@@ -72,21 +95,21 @@ function render() {
 
 // ---------------- 시작 화면 ----------------
 function renderStart() {
-  titleEl.textContent = "퍼즐 탐험대";
+  titleEl.textContent = "UNLOCK";
   const input = el("input", { type: "text", value: Store.getPlayer(), maxlength: "20", placeholder: "이름 또는 번호", "aria-label": "학생 이름 또는 번호" });
-  const start = () => { const v = input.value.trim() || "탐험가"; Store.setPlayer(v); beep("good"); go({ screen: "worlds" }); };
+  const start = () => { const v = input.value.trim() || "탈출자"; Store.setPlayer(v); beep("good"); go({ screen: "worlds" }); };
   input.addEventListener("keydown", e => { if (e.key === "Enter") start(); });
-  const mascot = el("div", { class: "mascot", text: "🧭", title: "눌러봐!", role: "button", tabindex: "0",
+  const mascot = el("div", { class: "mascot", text: "🗝️", title: "눌러봐!", role: "button", tabindex: "0",
     onclick: () => { beep("good"); mascot.classList.remove("happy"); void mascot.offsetWidth; mascot.classList.add("happy"); },
     onkeydown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mascot.click(); } } });
   main.appendChild(el("div", { class: "hero" }, [
     mascot,
-    el("h1", { text: "퍼즐 탐험대" }),
-    el("p", { text: "추상화와 알고리즘을 배우는 24개의 퍼즐 모험!" }),
-    el("p", { text: "문제를 분석하고, 조작하고, 실행하고, 설명하며 스스로 규칙을 찾아봐요." }),
+    el("h1", { text: "🔓 UNLOCK" }),
+    el("p", { text: "추상화와 알고리즘 퍼즐로 잠긴 문을 하나씩 열어라!" }),
+    el("p", { text: "문제를 풀면 다음 문이 열려요. 모든 문을 열고 탈출에 성공해 봐요 🗝️" }),
     el("div", { class: "namebox" }, [
       el("label", { text: "🙋 이름/번호를 입력하세요", for: "" }), input,
-      el("div", { style: "margin-top:12px" }, [el("button", { class: "btn", text: "🚀 모험 시작!", onclick: start })]),
+      el("div", { style: "margin-top:12px" }, [el("button", { class: "btn", text: "🚪 탈출 시작!", onclick: start })]),
     ]),
     el("p", { style: "font-size:.85rem;color:#888", text: "기록은 이 브라우저에만 저장돼요(localStorage)." }),
   ]));
@@ -99,19 +122,36 @@ function worldProgress(worldId) {
   return { done, total: list.length };
 }
 function renderWorlds() {
-  titleEl.textContent = `${Store.getPlayer()} 님의 모험`;
+  titleEl.textContent = `${Store.getPlayer()} 님의 UNLOCK`;
   const grid = el("div", { class: "world-grid" });
+  // 추천 순서: 아직 완주하지 못한 '첫' 월드를 "여기부터" 로 안내 (강제 아님)
+  const suggestedIdx = WORLDS.findIndex(w => { const { done, total } = worldProgress(w.id); return total === 0 || done < total; });
   WORLDS.forEach((w, i) => {
     const { done, total } = worldProgress(w.id);
-    grid.appendChild(el("div", { class: "world-card " + w.color, role: "button", tabindex: "0",
-      onclick: () => go({ screen: "stages", world: w.id }), onkeydown: e => { if (e.key === "Enter") go({ screen: "stages", world: w.id }); } }, [
+    const complete = total > 0 && done === total;
+    const isSuggested = i === suggestedIdx;
+    const softLock = suggestedIdx !== -1 && i > suggestedIdx && done === 0; // 순서상 뒤 + 아직 시작 안 함
+    const remaining = total - done;
+
+    let statusCls = "", badge = "", progText = `남은 문 ${remaining}개`;
+    if (complete) { statusCls = "complete"; badge = "✅"; progText = "🎉 탈출 완료!"; }
+    else if (isSuggested) { statusCls = "suggested"; badge = "🗝️"; progText = done > 0 ? `이어서 도전! 남은 문 ${remaining}개` : "🗝️ 여기부터 추천!"; }
+    else if (softLock) { statusCls = "soft-lock"; badge = "🔒"; progText = `🔒 남은 문 ${remaining}개 · 앞 월드 먼저 추천`; }
+
+    const openWorld = () => {
+      if (softLock) toast("앞 월드부터 하면 흐름이 자연스러워요 (그래도 들어갈 수 있어요) 🙂", "");
+      go({ screen: "stages", world: w.id });
+    };
+    grid.appendChild(el("div", { class: "world-card " + w.color + (statusCls ? " " + statusCls : ""), role: "button", tabindex: "0",
+      onclick: openWorld, onkeydown: e => { if (e.key === "Enter") openWorld(); } }, [
+      badge ? el("div", { class: "world-status-badge", text: badge }) : null,
       el("div", { class: "world-head" }, [
         el("span", { class: "world-num", text: String(i), "aria-label": `${i}단계` }),
         el("div", { class: "emoji", text: w.emoji }),
       ]),
       el("h2", { text: w.name }),
       el("p", { text: w.desc }),
-      el("div", { class: "prog", text: `진행: ${done} / ${total} 스테이지` }),
+      el("div", { class: "prog", text: `진행 ${done} / ${total} · ${progText}` }),
       el("div", { class: "bar" }, [el("i", { style: `width:${total ? (done / total * 100) : 0}%` })]),
     ]));
   });
@@ -144,30 +184,43 @@ function showRecords() {
 function renderStages(worldId) {
   const w = WORLDS.find(x => x.id === worldId);
   titleEl.textContent = w.name;
-  const list = PROBLEMS.filter(p => p.world === worldId);
-  const grid = el("div", { class: "stage-list" });
+  const list = stagesOfWorld(worldId);        // 난이도 순 정렬
+  const locks = computeLocks(list);            // 문 잠금 상태
   const teacher = teacherOn();
-  list.forEach(p => {
+  const clearedCount = list.filter(p => Store.getRecord(p.id).cleared).length;
+
+  const grid = el("div", { class: "stage-list" });
+  list.forEach((p, i) => {
     const r = Store.getRecord(p.id);
+    const locked = locks[i];
+    const isCurrent = !locked && !r.cleared;   // 지금 열 수 있는 '현재 문'
     const stars = { basic: "★☆☆", normal: "★★☆", challenge: "★★★" }[p.difficulty];
-    const card = el("div", { class: "stage-card", role: "button", tabindex: "0",
-      onclick: () => go({ screen: "game", stageId: p.id }), onkeydown: e => { if (e.key === "Enter") go({ screen: "game", stageId: p.id }); } }, [
-      r.cleared ? el("div", { class: "badge", text: "✅" }) : null,
-      el("div", { class: "sid", text: `${p.id} · 교재 ${p.sourceProblem} (${p.sourcePage}쪽)` }),
-      el("h3", { text: p.title }),
+    const doorIcon = r.cleared ? "🔓" : locked ? "🔒" : "🗝️";
+
+    const openStage = () => { if (locked) { beep("bad"); toast("앞의 문을 먼저 통과해야 열려요 🔒", "bad"); return; } go({ screen: "game", stageId: p.id }); };
+    const cls = "stage-card door" + (locked ? " locked" : "") + (isCurrent ? " current" : "") + (r.cleared ? " cleared" : "");
+    const card = el("div", { class: cls, role: "button", tabindex: "0", "aria-disabled": locked ? "true" : "false",
+      onclick: openStage, onkeydown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openStage(); } } }, [
+      el("div", { class: "door-badge", text: doorIcon }),
+      el("div", { class: "sid", text: `${i + 1}번째 문 · ${teacher || r.submitted ? p.id + " · 교재 " + p.sourceProblem + " (" + p.sourcePage + "쪽)" : ""}` }),
+      el("h3", { text: locked ? "🔒 잠긴 문" : p.title }),
       el("div", { class: "meta" }, [el("span", { class: "diff " + p.difficulty, text: { basic: "기초", normal: "기본", challenge: "도전" }[p.difficulty] }),
         el("span", { class: "stars", text: " " + stars }), el("span", { text: ` · ⏱${p.estimatedMinutes}분` })]),
-      el("div", {}, (p.learningGoals || []).slice(0, 2).map(g => el("span", { class: "chip", text: g }))),
-      (teacher || r.submitted) ? el("button", { class: "btn small ghost", text: r.submitted ? "📖 해설 다시 보기" : "📖 해설 미리보기", onclick: (e) => { e.stopPropagation(); openExplanation(p, teacher); } }) : null,
+      locked ? el("div", { class: "lock-hint", text: "앞의 문을 통과하면 열려요" })
+             : el("div", {}, (p.learningGoals || []).slice(0, 2).map(g => el("span", { class: "chip", text: g }))),
+      (!locked && (teacher || r.submitted)) ? el("button", { class: "btn small ghost", text: r.submitted ? "📖 해설 다시 보기" : "📖 해설 미리보기", onclick: (e) => { e.stopPropagation(); openExplanation(p, teacher); } }) : null,
     ]);
     grid.appendChild(card);
   });
+
+  const escaped = clearedCount === list.length;
   main.append(
     el("div", { style: "display:flex;gap:10px;align-items:center;flex-wrap:wrap" }, [
       el("button", { class: "btn ghost small", text: "← 월드 선택", onclick: () => go({ screen: "worlds" }) }),
-      el("h2", { text: w.name, style: "margin:6px 0" }),
+      el("h2", { text: "🚪 " + w.name, style: "margin:6px 0" }),
     ]),
-    el("p", { text: w.desc, class: "status-line" }),
+    el("p", { class: "status-line", text: escaped ? "🎉 모든 문을 열고 탈출 성공!" : `🗝️ 문을 하나씩 열며 탈출하세요! (${clearedCount} / ${list.length} 통과)` }),
+    el("div", { class: "escape-bar" }, [el("i", { style: `width:${list.length ? (clearedCount / list.length * 100) : 0}%` })]),
     grid,
   );
 }
@@ -240,7 +293,11 @@ function renderGame(stageId) {
         processTable: res.processTable, modelTable: res.modelTable, moves: res.moves ?? null, time: res.time ?? null, detail },
     });
     hintsUsed = 0;
-    if (res.isCorrect) winBurst();
+    if (res.isCorrect) {
+      winBurst();
+      const nxt = nextStage(p);
+      if (nxt && !Store.getRecord(nxt.id).cleared) toast("🔓 다음 문이 열렸어요!", "good");
+    }
     explainBtn.disabled = false;
     renderResult(p, res, score);
   }
@@ -329,10 +386,16 @@ function renderResult(problem, res, score) {
 
   // 12,13 버튼
   const nextP = nextStage(problem);
+  const cleared = res.isCorrect || Store.getRecord(problem.id).cleared;
+  // 방탈출: 통과했을 때만 '다음 문'이 열린다. 틀리면 이 문을 다시 풀어야 함.
+  const advanceBtn = (nextP && cleared)
+    ? el("button", { class: "btn green small", text: "🚪 다음 문 →", onclick: () => { closeM(); go({ screen: "game", stageId: nextP.id }); } })
+    : (!nextP && cleared)
+      ? el("button", { class: "btn green small", text: "🏁 문 목록으로 →", onclick: () => { closeM(); go({ screen: "stages", world: problem.world }); } })
+      : el("button", { class: "btn small", text: "🔒 다음 문(잠김)", disabled: "true", title: "이 문을 통과해야 다음 문이 열려요" });
   box.append(el("div", { class: "result-actions" }, [
     el("button", { class: "btn ghost small", text: "🔄 다시 풀기", onclick: () => { closeM(); go({ screen: "game", stageId: problem.id }); } }),
-    nextP ? el("button", { class: "btn green small", text: "다음 문제 →", onclick: () => { closeM(); go({ screen: "game", stageId: nextP.id }); } })
-      : el("button", { class: "btn green small", text: "월드로 →", onclick: () => { closeM(); go({ screen: "stages", world: problem.world }); } }),
+    advanceBtn,
     el("button", { class: "btn secondary small", text: "📖 완전 해설", onclick: () => openExplanation(problem, teacherOn()) }),
   ]));
 
@@ -341,7 +404,7 @@ function renderResult(problem, res, score) {
 }
 
 function nextStage(problem) {
-  const list = PROBLEMS.filter(p => p.world === problem.world);
+  const list = stagesOfWorld(problem.world);
   const idx = list.findIndex(p => p.id === problem.id);
   return list[idx + 1] || null;
 }
