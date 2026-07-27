@@ -99,7 +99,7 @@
   // 서버에서 조회할 코드 = 방 코드 하나 (반/학교 모두 이걸로 구분)
   function feedCode(){ return GROUP || CLASS_CODE; }
 
-  const POLL_MS = 4000;  // 새로고침 주기
+  const POLL_MS = 2000;  // 새로고침 주기 (2초 = 거의 실시간 느낌)
   const SESSION = "today";  // "today"=오늘 기록만(자동 초기화·권장) / "all"=전체 누적
   const LS = "unlock-board-cfg";
 

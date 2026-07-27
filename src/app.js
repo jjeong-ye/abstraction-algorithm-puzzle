@@ -128,7 +128,6 @@ function renderTeacherHub() {
       LIVE.enabled ? hubBtn("📺", "현황판 열기", "프로젝터에 실시간 표시", openBoardNow) : null,
       hubBtn("🎮", "게임 · 문제 풀이", "직접 풀기 + 정답·해설 보기", () => go({ screen: "worlds" })),
     ]),
-    el("p", { class: "home-hint", text: "학생은 선생님이 준 QR·링크로 들어와요 🗝️" }),
   ]));
 }
 
