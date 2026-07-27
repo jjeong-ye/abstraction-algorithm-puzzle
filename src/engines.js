@@ -50,6 +50,9 @@ ENGINES.deduce = function (host, problem) {
     submitLabel: "선택 제출하기",
     restart: () => { state = cfg.candidates.map(c => ({ ...c, alive: true })); appliedLog.length = 0; document.querySelectorAll(".cond.used").forEach(c => c.classList.remove("used")); renderCands(); },
     submit: () => {
+      // 찍기 방지: 조건 카드를 모두 적용해야 제출 가능(조건을 하나씩 적용해 후보를 줄이는 과정을 강제)
+      const notApplied = cfg.tests.filter(t => !appliedLog.includes(t.text));
+      if (notApplied.length) return { notReady: true, message: `아직 안 쓴 조건이 ${notApplied.length}개 있어요. 조건 카드를 모두 '거르기' 한 뒤 제출하세요.` };
       const alive = state.filter(s => s.alive).map(s => s.label);
       const ans = cfg.answerKeys.slice();
       const isCorrect = alive.length === ans.length && ans.every(a => alive.includes(a));
