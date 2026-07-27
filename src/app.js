@@ -218,7 +218,7 @@ function renderWorlds() {
     el("p", { class: "status-line", text: `전체 진행: ${totalDone} / ${PROBLEMS.length} 스테이지 완료` }),
     el("div", { style: "text-align:center;margin-top:10px" }, [
       el("button", { class: "btn ghost small", text: "🗂 학습 기록 보기", onclick: showRecords }),
-      el("button", { class: "btn ghost small", text: "♻ 기록 초기화", onclick: () => { if (confirm("모든 학습 기록을 지울까요?")) { Store.reset(); toast("초기화됨"); go({ screen: "start" }); } } }),
+      el("button", { class: "btn ghost small", text: "♻ 처음부터 다시", onclick: () => { if (confirm("⚠️ 지금까지 연 문(진행 기록)이 모두 사라져요.\n정말 처음부터 다시 시작할까요?")) { const g = Store.getGroup(); Store.reset(); if (g) Store.setGroup(g); toast("처음부터 다시!"); go({ screen: "start" }); } } }),
     ]),
   );
 }

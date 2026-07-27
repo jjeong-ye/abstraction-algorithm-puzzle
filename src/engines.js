@@ -65,42 +65,44 @@ ENGINES.deduce = function (host, problem) {
   };
 };
 
-// ---------- 2) base : 진법 찾기 (A-03) ----------
+// ---------- 2) base : 진법 찾기 (A-03, A-12) ----------
+// 찍기 방지: 보기 버튼 대신 '밑(진법)'을 직접 입력. 계산기가 각 식의 ✓/✗ 를 보여줘 검증을 유도.
 ENGINES.base = function (host, problem) {
   const cfg = problem.config;
-  let picked = null;
   const parseNum = (str, b) => [...str].reduce((a, ch) => a * b + parseInt(ch, 36), 0);
   const scratch = el("div", { class: "hint-box", style: "display:none" });
-  const grid = el("div", { class: "opt-grid" });
-  cfg.bases.forEach(b => {
-    const btn = el("button", { class: "opt", text: `${b}진법`, onclick: () => {
-      picked = b; grid.querySelectorAll(".opt").forEach(o => o.classList.remove("sel")); btn.classList.add("sel"); beep("click");
-    } });
-    grid.appendChild(btn);
-  });
-  const calcBtn = el("button", { class: "btn ghost small", text: "🧮 고른 진법으로 10진수 변환해 보기(계산기)", onclick: () => {
-    if (!picked) { toast("먼저 진법을 골라 보세요", ""); return; }
+  const input = el("input", { type: "number", class: "namebox", min: "2", max: "20", style: "max-width:200px;padding:8px", placeholder: "밑(진법) 예: 7", "aria-label": "밑(진법)" });
+  const calcBtn = el("button", { class: "btn ghost small", text: "🧮 입력한 진법으로 계산 확인", onclick: () => {
+    const b = Number(input.value);
+    if (!b || b < 2) { toast("먼저 밑(진법)을 입력해 보세요 (2 이상)", ""); return; }
     scratch.style.display = "block";
     const parts = [];
-    cfg.equations.forEach(eq => { const m = eq.replace(/\s/g, "").match(/^(\w+)([+*\-])(\w+)=(\w+)$/); if (m) parts.push(`${eq}  ⇒  ${parseNum(m[1], picked)} ${m[2]} ${parseNum(m[3], picked)} = ? (오른쪽은 ${parseNum(m[4], picked)})`); });
-    scratch.innerHTML = `<b>${picked}진법에서 각 수의 10진수 값:</b><br>` + parts.join("<br>") + "<br><i>맞는지 스스로 판단한 뒤 제출하세요.</i>";
+    cfg.equations.forEach(eq => {
+      const m = eq.replace(/\s/g, "").match(/^(\w+)([+*\-])(\w+)=(\w+)$/);
+      if (m) { const l = parseNum(m[1], b), r = parseNum(m[3], b), res = m[2] === "+" ? l + r : m[2] === "*" ? l * r : l - r, want = parseNum(m[4], b); parts.push(`${eq}  ⇒  ${l} ${m[2]} ${r} = ${res} , 오른쪽 = ${want}  ${res === want ? "✓" : "✗"}`); }
+    });
+    scratch.innerHTML = `<b>${b}진법으로 계산하면:</b><br>` + parts.join("<br>") + "<br><i>세 줄이 모두 ✓ 인 진법을 제출하세요.</i>";
   } });
   host.append(el("p", { class: "problem-text", text: cfg.equations.join("\n") }),
-    el("p", { class: "status-line", text: "세 계산이 모두 성립하는 진법을 골라 제출하세요." }), grid, calcBtn, scratch);
+    el("p", { class: "status-line", text: "세 계산이 모두 성립하는 '밑(진법)'을 찾아 직접 입력하고 제출하세요." }),
+    el("div", { class: "board" }, [input]), calcBtn, scratch);
   return {
-    submitLabel: "선택 제출하기",
-    restart: () => { picked = null; grid.querySelectorAll(".opt").forEach(o => o.classList.remove("sel")); scratch.style.display = "none"; },
+    submitLabel: "답 제출하기",
+    restart: () => { input.value = ""; scratch.style.display = "none"; },
     submit: () => {
-      if (picked == null) return { notReady: true, message: "진법을 하나 고른 뒤 제출하세요." };
-      const isCorrect = picked === cfg.answerBase;
-      return { isCorrect, answerText: `내가 고른 진법: ${picked}진법`,
-        processTable: T(["확인"], [[`${picked}진법으로 계산이 맞는지 검토함`]]),
+      if (input.value === "") return { notReady: true, message: "밑(진법)을 입력한 뒤 제출하세요." };
+      const b = Number(input.value);
+      const isCorrect = b === cfg.answerBase;
+      return { isCorrect, answerText: `내가 찾은 진법: ${b}진법`,
+        processTable: T(["확인"], [[`${b}진법으로 세 식 계산을 확인함`]]),
         detail: { 추상화: isCorrect ? 100 : 40, 알고리즘정확성: isCorrect ? 100 : 40 } };
     },
   };
 };
 
 // ---------- 3) analogy : 그림 유추 (A-04,05,06) ----------
+// 찍기 방지: cfg.ruleOptions 가 있으면 ① 규칙(핵심 속성) 고르기 + ② 보기 고르기 2단계.
+// 둘 다 맞아야 정답 처리(규칙만 틀리거나 보기만 맞으면 부분 정답).
 ENGINES.analogy = function (host, problem) {
   const cfg = problem.config;
   let picked = null;
@@ -108,6 +110,17 @@ ENGINES.analogy = function (host, problem) {
   wrap.appendChild(el("p", { class: "status-line", text: cfg.prompt }));
   if (cfg.mode === "proportion") wrap.appendChild(el("div", { class: "board" }, [shapeSVG(cfg.left.a, 70), el("b", { text: " → " }), shapeSVG(cfg.left.b, 70), el("b", { text: "   그렇다면   " }), shapeSVG(cfg.cShape, 70), el("b", { text: " → ?" })]));
   else if (cfg.mode === "next") { const row = el("div", { class: "board" }); cfg.series.forEach(s => row.appendChild(shapeSVG(s, 70))); row.appendChild(el("b", { text: " → ?" })); wrap.appendChild(row); }
+
+  // ① 규칙(핵심 속성) 고르기
+  let ruleWrap = null;
+  if (cfg.ruleOptions && cfg.ruleOptions.length) {
+    ruleWrap = el("div", { class: "cond-cards" });
+    ruleWrap.appendChild(el("div", { class: "status-line", text: "① 먼저 '규칙(핵심 속성)'을 찾아 고르세요" }));
+    cfg.ruleOptions.forEach(r => ruleWrap.appendChild(el("label", { class: "cond" }, [el("input", { type: "radio", name: "arule", value: r.id }), el("span", { text: r.text })])));
+    wrap.appendChild(ruleWrap);
+    wrap.appendChild(el("div", { class: "status-line", text: "② 그 규칙에 맞는 보기를 고르세요" }));
+  }
+
   const grid = el("div", { class: "opt-grid" });
   cfg.options.forEach(o => {
     const cell = el("button", { class: "opt", "aria-label": "보기 " + o.id }, [shapeSVG(o.shape, 80), el("div", { text: o.id })]);
@@ -117,13 +130,25 @@ ENGINES.analogy = function (host, problem) {
   wrap.appendChild(grid); host.appendChild(wrap);
   return {
     submitLabel: "선택 제출하기",
-    restart: () => { picked = null; grid.querySelectorAll(".opt").forEach(c => c.classList.remove("sel")); },
+    restart: () => { picked = null; grid.querySelectorAll(".opt").forEach(c => c.classList.remove("sel")); if (ruleWrap) ruleWrap.querySelectorAll("input").forEach(i => i.checked = false); },
     submit: () => {
       if (picked == null) return { notReady: true, message: "보기를 하나 고른 뒤 제출하세요." };
-      const isCorrect = picked === cfg.answer;
-      return { isCorrect, answerText: `내가 고른 보기: ${picked}`,
-        processTable: T(["고른 규칙 근거"], [[(cfg.ruleTags || []).join(", ") || "관찰"]]),
-        detail: { 추상화: isCorrect ? 100 : 40, 알고리즘정확성: isCorrect ? 100 : 40 } };
+      const pickOk = picked === cfg.answer;
+      let ruleOk = true, ruleText = "";
+      if (ruleWrap) {
+        const r = ruleWrap.querySelector("input:checked");
+        if (!r) return { notReady: true, message: "먼저 '규칙(핵심 속성)'을 고른 뒤 제출하세요." };
+        const ro = cfg.ruleOptions.find(x => x.id === r.value);
+        ruleOk = !!(ro && ro.correct); ruleText = ro ? ro.text : "";
+      }
+      const isCorrect = pickOk && ruleOk;
+      const partial = !isCorrect && (pickOk || ruleOk);
+      return {
+        isCorrect, partial,
+        answerText: `내가 고른 보기: ${picked}` + (ruleWrap ? ` / 고른 규칙: ${ruleText || "(미선택)"}` : ""),
+        processTable: T(["고른 규칙 근거"], [[ruleWrap ? (ruleText || "-") : ((cfg.ruleTags || []).join(", ") || "관찰")]]),
+        detail: { 추상화: ruleOk ? 100 : 40, 알고리즘정확성: pickOk ? 100 : 40 },
+      };
     },
   };
 };
@@ -155,12 +180,9 @@ ENGINES.sequence = function (host, problem) {
 };
 
 // ---------- 5) hub : 축에는 어떤 수 (A-08) ----------
+// 찍기 방지: 보기 버튼 대신 '축 수'와 '지름(직선 3수)의 합'을 직접 입력. 둘 다 맞아야 정답.
 ENGINES.hub = function (host, problem) {
   const cfg = problem.config;
-  let picked = null;
-  const grid = el("div", { class: "opt-grid" });
-  cfg.options.forEach(v => { const b = el("button", { class: "opt", text: String(v), onclick: () => { picked = v; grid.querySelectorAll(".opt").forEach(o => o.classList.remove("sel")); b.classList.add("sel"); beep("click"); } }); grid.appendChild(b); });
-  host.append(el("p", { class: "status-line", text: "가운데 축에 들어갈 수를 골라 제출하세요 (1~13 중)." }), grid);
   function pairing(h) {
     const rest = []; for (let x = 1; x <= 13; x++) if (x !== h) rest.push(x);
     const total = rest.reduce((a, b) => a + b, 0); if (total % 6 !== 0) return null;
@@ -168,17 +190,42 @@ ENGINES.hub = function (host, problem) {
     for (const v of rest) { if (used.has(v)) continue; const need = pair - v; if (need !== v && set.has(need) && !used.has(need)) { used.add(v); used.add(need); pairs.push([v, need]); } else return null; }
     return { pair, pairs };
   }
+  const hubIn = el("input", { type: "number", class: "namebox", min: "1", max: "13", style: "max-width:150px;padding:8px", placeholder: "축 수", "aria-label": "축(가운데) 수" });
+  const sumIn = el("input", { type: "number", class: "namebox", min: "1", style: "max-width:150px;padding:8px", placeholder: "지름 3수의 합", "aria-label": "지름 위 3수의 합" });
+  const check = el("div", { class: "hint-box", style: "display:none" });
+  const tryBtn = el("button", { class: "btn ghost small", text: "🧮 입력한 축으로 짝지어 보기", onclick: () => {
+    const h = Number(hubIn.value);
+    if (!h || h < 1 || h > 13) { toast("먼저 축 수(1~13)를 입력해 보세요", ""); return; }
+    const p = pairing(h);
+    check.style.display = "block";
+    check.innerHTML = p
+      ? `축이 <b>${h}</b>이면 12개의 살을 <b>합 ${p.pair}</b>인 6쌍으로 나눌 수 있어요: ${p.pairs.map(x => `(${x[0]},${x[1]})`).join(" ")}<br>→ 축을 지나는 직선(3수) 합 = <b>${p.pair + h}</b>`
+      : `축이 <b>${h}</b>이면 남은 12개를 똑같은 합의 6쌍으로 못 나눠요. 다른 축을 시도해 보세요.`;
+  } });
+  host.append(
+    el("p", { class: "status-line", text: "1~13을 12개의 살과 1개의 축에 하나씩 넣어요. '축을 지나는 직선 위 3수의 합'이 모두 같아야 해요." }),
+    el("button", { class: "btn ghost small", text: "💡 1~13의 합은? (힌트)", onclick: () => toast("1+2+…+13 = 91", "good") }),
+    tryBtn, check,
+    el("div", { class: "board", style: "gap:8px;flex-wrap:wrap" }, [el("label", { text: "축 수 " }), hubIn, el("label", { text: "  지름 3수의 합 " }), sumIn]),
+  );
   return {
-    submitLabel: "선택 제출하기",
-    restart: () => { picked = null; grid.querySelectorAll(".opt").forEach(o => o.classList.remove("sel")); },
+    submitLabel: "답 제출하기",
+    restart: () => { hubIn.value = ""; sumIn.value = ""; check.style.display = "none"; },
     submit: () => {
-      if (picked == null) return { notReady: true, message: "축에 넣을 수를 고른 뒤 제출하세요." };
-      const isCorrect = cfg.acceptable.includes(picked);
-      const model = cfg.acceptable.map(h => { const p = pairing(h); return [`${h}`, p ? p.pair + h : "-", p ? p.pairs.map(x => `(${x[0]},${x[1]})`).join(" ") : "-"]; });
-      return { isCorrect, answerText: `내가 고른 축: ${picked}`,
-        processTable: T(["고른 축"], [[String(picked)]]),
+      if (hubIn.value === "") return { notReady: true, message: "축에 넣을 수를 입력하세요." };
+      if (sumIn.value === "") return { notReady: true, message: "'지름 3수의 합'도 입력한 뒤 제출하세요." };
+      const h = Number(hubIn.value), sVal = Number(sumIn.value);
+      const hubOk = cfg.acceptable.includes(h);
+      const p = pairing(h);
+      const sumOk = p != null && sVal === p.pair + h;
+      const isCorrect = hubOk && sumOk;
+      const partial = !isCorrect && (hubOk || sumOk);
+      const model = cfg.acceptable.map(hh => { const pp = pairing(hh); return [`${hh}`, pp ? pp.pair + hh : "-", pp ? pp.pairs.map(x => `(${x[0]},${x[1]})`).join(" ") : "-"]; });
+      return { isCorrect, partial,
+        answerText: `축: ${h} / 지름 합: ${sVal}`,
+        processTable: T(["축", "지름 3수의 합"], [[String(h), String(sVal)]]),
         modelTable: T(["가능한 축", "지름 합", "살 짝짓기"], model),
-        detail: { 추상화: isCorrect ? 100 : 40, 알고리즘정확성: isCorrect ? 100 : 40 } };
+        detail: { 추상화: hubOk ? 100 : 40, 알고리즘정확성: sumOk ? 100 : 40 } };
     },
   };
 };
@@ -258,21 +305,22 @@ ENGINES.orderSteps = function (host, problem) {
 };
 
 // ---------- 8) mobile : 모빌 평형 (B-03, B-04) ----------
+// 찍기 방지: 보기 버튼 대신 '?' 추의 무게를 직접 계산해 입력(입력하면 그림에 즉시 반영).
 ENGINES.mobile = function (host, problem) {
   const cfg = problem.config;
-  let picked = null;
   const svg = buildMobileSVG(cfg.tree);
-  const grid = el("div", { class: "opt-grid" });
-  cfg.options.forEach(v => { const b = el("button", { class: "opt", text: `${v}g`, onclick: () => { picked = v; grid.querySelectorAll(".opt").forEach(o => o.classList.remove("sel")); b.classList.add("sel"); setUnknown(svg, v); beep("click"); } }); grid.appendChild(b); });
-  host.append(svg, el("p", { class: "status-line", text: "힘 = 거리 × 무게. '?' 자리 추를 골라 평형을 맞춘 뒤 제출하세요." }), grid);
+  const input = el("input", { type: "number", class: "namebox", min: "1", style: "max-width:200px;padding:8px", placeholder: "? 자리 추 무게(g)", "aria-label": "추 무게(g)" });
+  input.addEventListener("input", () => setUnknown(svg, input.value === "" ? "?" : Number(input.value)));
+  host.append(svg, el("p", { class: "status-line", text: "힘 = 거리 × 무게. 양쪽 힘이 같아지도록 '?' 자리 추의 무게(g)를 계산해 입력하고 제출하세요." }), el("div", { class: "board" }, [input]));
   return {
-    submitLabel: "선택 제출하기",
-    restart: () => { picked = null; grid.querySelectorAll(".opt").forEach(o => o.classList.remove("sel")); setUnknown(svg, "?"); },
+    submitLabel: "답 제출하기",
+    restart: () => { input.value = ""; setUnknown(svg, "?"); },
     submit: () => {
-      if (picked == null) return { notReady: true, message: "'?' 자리 추를 고른 뒤 제출하세요." };
-      const isCorrect = balancesWith(cfg.tree, picked);
-      return { isCorrect, answerText: `내가 고른 추: ? = ${picked}g`,
-        processTable: T(["선택"], [[`? = ${picked}g`]]),
+      if (input.value === "") return { notReady: true, message: "'?' 자리 추의 무게를 입력한 뒤 제출하세요." };
+      const v = Number(input.value);
+      const isCorrect = balancesWith(cfg.tree, v);
+      return { isCorrect, answerText: `내가 구한 추: ? = ${v}g`,
+        processTable: T(["계산"], [[`? = ${v}g`]]),
         detail: { 추상화: isCorrect ? 100 : 40, 알고리즘정확성: isCorrect ? 100 : 40 } };
     },
   };
@@ -339,6 +387,7 @@ ENGINES.balance = function (host, problem) {
     submitLabel: "현재 풀이 제출하기",
     restart: () => { left = []; right = []; weighings = 0; suspect = null; log = []; result.textContent = ""; render(); },
     submit: () => {
+      if (weighings === 0) return { notReady: true, message: "저울질을 한 번이라도 해서 확인한 뒤 범인을 지목하세요." };
       if (suspect == null) return { notReady: true, message: "범인 동전을 지목한 뒤 제출하세요." };
       const isCorrect = suspect === cfg.oddIndex;
       return { isCorrect, moves: weighings,
@@ -568,25 +617,34 @@ function graphSVG(cfg) {
   });
   return svg;
 }
+// 찍기 방지(2택 → 추상화+알고리즘): ① 점 클릭으로 차수 확인 → ② 홀수 차수 점 개수 입력 → ③ 가능/불가능 판단. 둘 다 맞아야 정답.
 function graphAnalyze(host, problem) {
-  const cfg = problem.config; const svg = graphSVG(cfg); let choice = null; const seen = new Set();
+  const cfg = problem.config; const svg = graphSVG(cfg); let choice = null;
   const out = el("div", { class: "status-line" });
-  svg.querySelectorAll(".node").forEach(node => node.addEventListener("click", () => { const id = node.getAttribute("data-node"); seen.add(id); node.setAttribute("fill", "#51cf66"); out.textContent = `${id}의 차수 = ${cfg.degrees[id]}` + (cfg.degrees[id] % 2 ? " (홀수)" : " (짝수)"); }));
+  svg.querySelectorAll(".node").forEach(node => node.addEventListener("click", () => { const id = node.getAttribute("data-node"); const odd = cfg.degrees[id] % 2; node.setAttribute("fill", odd ? "#ff8787" : "#51cf66"); out.textContent = `${id}의 차수 = ${cfg.degrees[id]}` + (odd ? " (홀수)" : " (짝수)"); }));
+  const oddIn = el("input", { type: "number", class: "namebox", min: "0", style: "max-width:160px;padding:8px", placeholder: "홀수 점 개수", "aria-label": "홀수 차수인 점의 개수" });
   const btns = el("div", { class: "board" }, [
-    el("button", { class: "btn secondary", text: "제자리로 돌아오는 길이 있다(가능)", onclick: () => { choice = "possible"; out.textContent = "선택: 가능"; } }),
-    el("button", { class: "btn secondary", text: "불가능하다", onclick: () => { choice = "impossible"; out.textContent = "선택: 불가능"; } }),
+    el("button", { class: "btn secondary", text: "가능 (제자리로 돌아옴)", onclick: () => { choice = "possible"; out.textContent = "선택: 가능"; } }),
+    el("button", { class: "btn secondary", text: "불가능", onclick: () => { choice = "impossible"; out.textContent = "선택: 불가능"; } }),
   ]);
-  host.append(el("p", { class: "status-line", text: "점을 클릭해 차수를 확인하고, 한붓그리기(제자리 복귀)가 가능한지 골라 제출하세요." }), svg, out, btns);
+  host.append(el("p", { class: "status-line", text: "① 점을 클릭해 '차수(연결된 선 수)'를 확인 → ② '홀수 차수인 점'이 몇 개인지 세어 입력 → ③ 한붓그리기(제자리 복귀)가 가능한지 판단해 제출하세요." }),
+    svg, out, el("div", { class: "board", style: "gap:8px;flex-wrap:wrap" }, [el("label", { text: "홀수 차수인 점 개수 " }), oddIn]), btns);
+  const oddCount = cfg.nodes.filter(n => cfg.degrees[n.id] % 2).length;
   return {
-    submitLabel: "선택 제출하기",
-    restart: () => { choice = null; out.textContent = ""; svg.querySelectorAll(".node").forEach(n => n.setAttribute("fill", "#4dabf7")); },
+    submitLabel: "제출하기",
+    restart: () => { choice = null; oddIn.value = ""; out.textContent = ""; svg.querySelectorAll(".node").forEach(n => n.setAttribute("fill", "#4dabf7")); },
     submit: () => {
+      if (oddIn.value === "") return { notReady: true, message: "먼저 '홀수 차수인 점의 개수'를 세어 입력하세요." };
       if (!choice) return { notReady: true, message: "'가능/불가능'을 고른 뒤 제출하세요." };
       const correctChoice = cfg.answer === "impossible" ? "impossible" : "possible";
-      const isCorrect = choice === correctChoice;
-      return { isCorrect, answerText: `내 판단: ${choice === "impossible" ? "불가능" : "가능"}`,
+      const oddOk = Number(oddIn.value) === oddCount;
+      const choiceOk = choice === correctChoice;
+      const isCorrect = oddOk && choiceOk;
+      const partial = !isCorrect && (oddOk || choiceOk);
+      return { isCorrect, partial,
+        answerText: `홀수 점 개수: ${oddIn.value} / 판단: ${choice === "impossible" ? "불가능" : "가능"}`,
         processTable: T(["점", "차수", "홀짝"], cfg.nodes.map(n => [n.id, cfg.degrees[n.id], cfg.degrees[n.id] % 2 ? "홀수" : "짝수"])),
-        detail: { 추상화: isCorrect ? 100 : 40, 알고리즘정확성: isCorrect ? 100 : 40, 설명: isCorrect ? 90 : 40 } };
+        detail: { 추상화: oddOk ? 100 : 40, 알고리즘정확성: choiceOk ? 100 : 40, 설명: isCorrect ? 90 : 40 } };
     },
   };
 }

@@ -271,7 +271,7 @@ PROBLEMS.push({
   correctAnswers: ["E"], equivalentAnswers: [],
   config: {
     kind: "analogy", mode: "odd",
-    prompt: "네 개는 '테두리 도형 안에 작은 점'이 있어요. 규칙을 어긴 하나를 고르세요.",
+    prompt: "다섯 그림 중 '규칙을 어긴 하나'를 고르세요. (먼저 네 그림이 공유하는 공통 규칙이 무엇인지 찾아보세요.)",
     options: [
       { id: "A", shape: { outline: "square", dot: true, fill: "#a5d8ff" } },
       { id: "B", shape: { outline: "triangle", dot: true, fill: "#b2f2bb" } },
@@ -281,6 +281,12 @@ PROBLEMS.push({
     ],
     answer: "E",
     ruleTags: ["안쪽 점 유무", "테두리 도형", "색"],
+    ruleOptions: [
+      { id: "dot", text: "네 그림 모두 '안쪽에 점'이 있다", correct: true },
+      { id: "color", text: "네 그림의 색이 모두 같다" },
+      { id: "shape", text: "네 그림의 테두리 모양이 모두 같다" },
+      { id: "size", text: "네 그림의 크기가 모두 같다" },
+    ],
   },
   hint1Observation: "각 그림에서 '안쪽에 점이 있는지'를 먼저 확인해 보세요.",
   hint2KeyCondition: "네 그림 모두 안에 작은 점이 있어요. 딱 하나만 점이 없어요.",
@@ -338,7 +344,7 @@ PROBLEMS.push({
   correctAnswers: ["3"], equivalentAnswers: [],
   config: {
     kind: "analogy", mode: "proportion",
-    prompt: "규칙: '큰 도형 → 같은 모양의 작은 도형'. 원(큰 원)은 무엇이 될까요?",
+    prompt: "A가 B로 바뀐 것과 '같은 규칙'으로, 원(C)은 무엇이 될까요? (A→B에서 무엇이 변했는지 먼저 찾아보세요.)",
     left: { a: { outline: "square", size: 1, fill: "#a5d8ff" }, b: { outline: "square", size: 0.5, fill: "#a5d8ff" } },
     cShape: { outline: "circle", size: 1, fill: "#ffd8a8" },
     options: [
@@ -348,6 +354,12 @@ PROBLEMS.push({
       { id: "4", shape: { outline: "triangle", size: 0.5, fill: "#ffd8a8" } },
     ],
     answer: "3", ruleTags: ["크기 축소", "모양 유지"],
+    ruleOptions: [
+      { id: "half", text: "모양은 그대로, 크기만 절반으로 줄인다", correct: true },
+      { id: "shape", text: "크기는 그대로, 모양을 바꾼다" },
+      { id: "big", text: "크기를 2배로 키운다" },
+      { id: "color", text: "색을 바꾼다" },
+    ],
   },
   hint1Observation: "A와 B를 비교해서 '무엇이 달라졌는지' 한 가지만 찾아요.",
   hint2KeyCondition: "모양은 그대로, 크기만 절반으로 줄었어요.",
@@ -396,7 +408,7 @@ PROBLEMS.push({
   correctAnswers: ["4"], equivalentAnswers: [],
   config: {
     kind: "analogy", mode: "next",
-    prompt: "화살표가 시계 방향으로 90°씩 돌아요. 다음(네 번째)에 올 화살표는?",
+    prompt: "화살표가 일정한 규칙으로 변하고 있어요. 다음(네 번째)에 올 화살표는? (어떤 규칙인지 먼저 찾아보세요.)",
     series: [
       { outline: "arrow", rotate: 0, fill: "#4dabf7" },
       { outline: "arrow", rotate: 90, fill: "#4dabf7" },
@@ -409,6 +421,12 @@ PROBLEMS.push({
       { id: "4", shape: { outline: "arrow", rotate: 270, fill: "#4dabf7" } },
     ],
     answer: "4", ruleTags: ["회전 90°", "시계 방향"],
+    ruleOptions: [
+      { id: "cw90", text: "시계 방향으로 90°씩 회전한다", correct: true },
+      { id: "ccw90", text: "반시계 방향으로 90°씩 회전한다" },
+      { id: "deg45", text: "45°씩 회전한다" },
+      { id: "color", text: "색이 바뀐다" },
+    ],
   },
   hint1Observation: "첫 번째와 두 번째 화살표의 방향 차이를 각도로 재어 보세요.",
   hint2KeyCondition: "매번 시계 방향으로 90°씩 돌고 있어요(0→90→180).",
