@@ -4,10 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>퍼즐 탐험대 · 추상화와 알고리즘</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
+
+  <!-- 살아있는 배경: 둥둥 떠다니는 도형 (움직임 줄이기 설정 시 정지) -->
+  <div class="bg-deco" aria-hidden="true">
+    <span class="deco d1">🔺</span>
+    <span class="deco d2">🟦</span>
+    <span class="deco d3">⭐</span>
+    <span class="deco d4">🟣</span>
+    <span class="deco d5">🔶</span>
+    <span class="deco d6">💡</span>
+    <span class="deco d7">🧩</span>
+    <span class="deco d8">✨</span>
+  </div>
 
   <!-- 상단 바 -->
   <header class="topbar" role="banner">

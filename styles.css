@@ -323,3 +323,130 @@ body{ font-size:20px; line-height:1.72; letter-spacing:-0.01em; -webkit-font-smo
   .status-line{ font-size:1.12rem; }
   .opt{ font-size:1.08rem; }
 }
+
+/* ===================================================== */
+/* 🎮 플래시 게임 감성 강화 (중학생용 재미 요소)          */
+/* ===================================================== */
+
+/* 둥글둥글한 게임체 폰트 — 제목/버튼/카드에 사용 (본문 가독성은 고딕 유지) */
+:root{ --display: "Jua","맑은 고딕","Malgun Gothic",var(--font); }
+.hero h1, .topbar-title, .btn, .world-card h2, .stage-card h3,
+.panel h2, .goal-tag, .verdict, .score-chip b, .diff, .opt{
+  font-family: var(--display);
+  letter-spacing: 0;
+}
+
+/* ---------- 살아있는 배경 (떠다니는 도형) ---------- */
+.bg-deco{ position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.bg-deco .deco{
+  position:absolute; font-size:2.6rem; opacity:.16;
+  animation: floaty 9s ease-in-out infinite;
+  will-change: transform;
+}
+.bg-deco .d1{ left:6%;  top:18%; animation-duration:8s;  font-size:3.2rem; }
+.bg-deco .d2{ left:82%; top:12%; animation-duration:11s; animation-delay:-2s; }
+.bg-deco .d3{ left:14%; top:72%; animation-duration:10s; animation-delay:-4s; font-size:2.2rem; }
+.bg-deco .d4{ left:70%; top:66%; animation-duration:12s; animation-delay:-1s; font-size:3rem; }
+.bg-deco .d5{ left:46%; top:8%;  animation-duration:9s;  animation-delay:-3s; }
+.bg-deco .d6{ left:90%; top:44%; animation-duration:13s; animation-delay:-5s; }
+.bg-deco .d7{ left:30%; top:40%; animation-duration:10.5s; animation-delay:-6s; font-size:2.4rem; }
+.bg-deco .d8{ left:58%; top:82%; animation-duration:8.5s; animation-delay:-2.5s; font-size:2rem; }
+@keyframes floaty{
+  0%,100%{ transform:translateY(0) rotate(-6deg); }
+  50%{ transform:translateY(-26px) rotate(8deg); }
+}
+/* 콘텐츠는 배경 위로 */
+.topbar, .screen-host, .footbar, #modal-root, #toast-root{ position:relative; z-index:1; }
+
+/* ---------- 등장 애니메이션 (통통 튀며 나타남) ---------- */
+@keyframes popIn{
+  0%{ transform:scale(.6) translateY(16px); opacity:0; }
+  70%{ transform:scale(1.05) translateY(0); opacity:1; }
+  100%{ transform:scale(1) translateY(0); }
+}
+@keyframes slideUp{
+  from{ transform:translateY(24px); opacity:0; }
+  to{ transform:translateY(0); opacity:1; }
+}
+.hero{ animation: popIn .5s cubic-bezier(.2,1.4,.4,1) both; }
+.panel{ animation: slideUp .4s ease both; }
+.game-wrap .panel:nth-child(2){ animation-delay:.08s; }
+
+/* 카드가 순서대로 톡톡 등장 */
+.world-card, .stage-card{ animation: popIn .45s cubic-bezier(.2,1.4,.4,1) both; }
+.world-grid .world-card:nth-child(1){ animation-delay:.04s; }
+.world-grid .world-card:nth-child(2){ animation-delay:.12s; }
+.world-grid .world-card:nth-child(3){ animation-delay:.20s; }
+.world-grid .world-card:nth-child(4){ animation-delay:.28s; }
+.stage-list .stage-card:nth-child(1){ animation-delay:.03s; }
+.stage-list .stage-card:nth-child(2){ animation-delay:.08s; }
+.stage-list .stage-card:nth-child(3){ animation-delay:.13s; }
+.stage-list .stage-card:nth-child(4){ animation-delay:.18s; }
+.stage-list .stage-card:nth-child(5){ animation-delay:.23s; }
+.stage-list .stage-card:nth-child(6){ animation-delay:.28s; }
+
+/* ---------- 카드/버튼 인터랙션 살리기 ---------- */
+.world-card{ transition: transform .14s cubic-bezier(.2,1.4,.4,1), box-shadow .14s; }
+.world-card:hover{ transform: translateY(-6px) rotate(-1deg) scale(1.02); }
+.world-card:active{ transform: translateY(-2px) scale(.99); }
+.world-card .emoji{ transition: transform .2s; display:inline-block; }
+.world-card:hover .emoji{ transform: scale(1.25) rotate(-8deg); }
+
+.stage-card{ transition: transform .14s cubic-bezier(.2,1.4,.4,1), box-shadow .14s; }
+.stage-card:hover{ transform: translateY(-4px) rotate(-.6deg) scale(1.015); box-shadow:0 12px 22px rgba(0,0,0,.16); }
+
+.btn{ transition: transform .1s cubic-bezier(.2,1.6,.4,1), filter .1s; }
+.btn:hover{ transform: translateY(-3px) scale(1.03); }
+.btn:active{ transform: translateY(2px) scale(.98); }
+
+.opt{ transition: transform .12s cubic-bezier(.2,1.5,.4,1), border-color .12s, background .12s; }
+.opt:hover{ transform: translateY(-3px) scale(1.04); }
+.opt.sel{ animation: pulseSel .3s ease; }
+@keyframes pulseSel{ 0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+
+/* 정답/오답 순간 흔들림·번쩍 */
+.opt.correct{ animation: correctPop .5s ease; }
+@keyframes correctPop{ 0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(1)} }
+.opt.wrong{ animation: shake .4s ease; }
+@keyframes shake{ 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }
+
+/* 제출 버튼: 살짝 숨쉬는 강조 */
+.submit-btn{ animation: breathe 1.8s ease-in-out infinite; }
+@keyframes breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.04); } }
+.submit-btn:hover{ animation:none; }
+
+/* ---------- 마스코트 반응 ---------- */
+.hero .mascot{ cursor:pointer; transition: transform .2s; }
+.hero .mascot:hover{ transform: scale(1.15) rotate(10deg); }
+.mascot.happy{ animation: happyJump .6s ease; }
+@keyframes happyJump{ 0%{transform:translateY(0)} 30%{transform:translateY(-30px) rotate(-12deg)} 60%{transform:translateY(0) rotate(8deg)} 100%{transform:translateY(0)} }
+.mascot.think{ animation: tilt .6s ease; }
+@keyframes tilt{ 0%,100%{transform:rotate(0)} 25%{transform:rotate(-16deg)} 75%{transform:rotate(16deg)} }
+
+/* ---------- 큰 성공 이모지 팝 ---------- */
+.win-burst .big{ font-size:7rem; filter: drop-shadow(0 6px 12px rgba(0,0,0,.25)); }
+
+/* ---------- 색종이(confetti) ---------- */
+.confetti-layer{ position:fixed; inset:0; z-index:65; pointer-events:none; overflow:hidden; }
+.confetti{
+  position:absolute; top:-24px; display:block;
+  animation: confettiFall var(--dur,2s) linear var(--delay,0s) forwards;
+  will-change: transform, opacity;
+}
+@keyframes confettiFall{
+  0%{ transform: translate(0,0) rotate(0); opacity:1; }
+  100%{ transform: translate(var(--drift,0), 108vh) rotate(var(--spin,360deg)); opacity:.9; }
+}
+
+/* ---------- 진행 바 반짝임 ---------- */
+.bar>i{ background: linear-gradient(90deg,var(--green),#8ce99a,var(--green)); transition: width .5s cubic-bezier(.2,1,.3,1); }
+
+/* 완료 배지 통통 */
+.stage-card .badge{ animation: badgePop .5s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes badgePop{ 0%{transform:scale(0) rotate(-30deg)} 70%{transform:scale(1.3)} 100%{transform:scale(1)} }
+
+/* 움직임 줄이기: 모든 재미 애니메이션 정지 (접근성) */
+.reduce-motion .bg-deco .deco,
+.reduce-motion .submit-btn{ animation:none !important; }
+.reduce-motion .hero, .reduce-motion .panel,
+.reduce-motion .world-card, .reduce-motion .stage-card{ animation:none !important; }

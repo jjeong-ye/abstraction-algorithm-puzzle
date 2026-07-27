@@ -76,8 +76,11 @@ function renderStart() {
   const input = el("input", { type: "text", value: Store.getPlayer(), maxlength: "20", placeholder: "이름 또는 번호", "aria-label": "학생 이름 또는 번호" });
   const start = () => { const v = input.value.trim() || "탐험가"; Store.setPlayer(v); beep("good"); go({ screen: "worlds" }); };
   input.addEventListener("keydown", e => { if (e.key === "Enter") start(); });
+  const mascot = el("div", { class: "mascot", text: "🧭", title: "눌러봐!", role: "button", tabindex: "0",
+    onclick: () => { beep("good"); mascot.classList.remove("happy"); void mascot.offsetWidth; mascot.classList.add("happy"); },
+    onkeydown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mascot.click(); } } });
   main.appendChild(el("div", { class: "hero" }, [
-    el("div", { class: "mascot", text: "🧭" }),
+    mascot,
     el("h1", { text: "퍼즐 탐험대" }),
     el("p", { text: "추상화와 알고리즘을 배우는 24개의 퍼즐 모험!" }),
     el("p", { text: "문제를 분석하고, 조작하고, 실행하고, 설명하며 스스로 규칙을 찾아봐요." }),
@@ -334,7 +337,7 @@ function renderResult(problem, res, score) {
   ]));
 
   const closeM = modal("📊 채점 & 해설", box);
-  beep(res.isCorrect ? "win" : "click");
+  beep(res.isCorrect ? "win" : res.partial ? "good" : "bad");
 }
 
 function nextStage(problem) {
