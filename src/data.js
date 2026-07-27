@@ -65,6 +65,12 @@ PROBLEMS.push({
       { text: "조건⑤: 가장 큰 수가 천의 자리", fn: (n) => { const d = String(n).split("").map(Number); return d[0] === Math.max(...d); } },
     ],
     answerKeys: ["4132"],
+    reasonOptions: [
+      { id: "combine", text: "조건②(합=10)와 ④(앞 두 자리 합=뒤 두 자리 합)를 합치면 앞·뒤가 각각 5임을 이용", correct: true },
+      { id: "brute", text: "1000~9999 모든 수를 하나씩 다 넣어 본다" },
+      { id: "guess", text: "가장 큰 수를 천의 자리에 아무렇게나 넣어 본다" },
+      { id: "even", text: "짝수라서 무조건 일의 자리가 2로 끝난다" },
+    ],
   },
   hint1Observation: "먼저 어떤 조건이 후보를 가장 많이 지워줄까요? '짝수'와 '자리수 합 10'을 떠올려 보세요.",
   hint2KeyCondition: "조건 ②(합=10)와 조건 ④(천+백=십+일)를 함께 쓰면, 천+백=5, 십+일=5가 돼요.",
@@ -151,6 +157,12 @@ PROBLEMS.push({
       { text: "조건②: 작년 아버지=2×작년 아들", fn: (v) => (v.f - 1) === 2 * (v.s - 1) },
     ],
     answerKeys: ["아버지 73 / 아들 37"],
+    reasonOptions: [
+      { id: "eq", text: "아버지=10a+b, 아들=10b+a로 두면 '작년 2배' 조건이 8a=19b−1 방정식이 된다", correct: true },
+      { id: "flip", text: "자리를 뒤집어 아들이 되는 짝이면 무조건 답이다" },
+      { id: "now2", text: "올해 아버지가 아들의 2배인 짝을 찾는다" },
+      { id: "brute", text: "10~99 아무 나이나 대입해 우연히 맞는 걸 고른다" },
+    ],
   },
   hint1Observation: "'작년에 2배'라는 말에서 아버지의 지금 나이가 홀수인지 짝수인지 생각해 보세요.",
   hint2KeyCondition: "작년: (아버지-1)=2×(아들-1). 그리고 아버지=10a+b, 아들=10b+a로 두면 식이 하나 나와요.",
@@ -212,6 +224,12 @@ PROBLEMS.push({
     equations: ["13 + 15 = 31", "10 * 10 = 100", "6 * 3 = 24"],
     bases: [5, 6, 7, 8, 9, 10],
     answerBase: 7,
+    reasonOptions: [
+      { id: "eq", text: "한 식(13+15=31)을 자리값 방정식으로 풀어 밑을 구하고, 나머지 식으로 검증했다", correct: true },
+      { id: "try", text: "계산기로 아무 진법이나 눌러 우연히 맞는 걸 골랐다" },
+      { id: "ten", text: "숫자가 커 보이니 10진법일 것이다" },
+      { id: "one", text: "식 하나만 맞으면 바로 답이다" },
+    ],
   },
   hint1Observation: "우리가 아는 10진법이면 13+15=28인데 답이 31이래요. 그럼 자리값이 10이 아니라는 뜻!",
   hint2KeyCondition: "진법을 b라 하면 '13'은 1×b+3, '31'은 3×b+1 이에요.",
@@ -876,6 +894,12 @@ PROBLEMS.push({
 PROBLEMS.push({
   id: "B-06", sourceProblem: "5-19", sourcePage: 96, world: "algorithm",
   title: "위조 동전 (가벼움)", engine: "balance", difficulty: "normal", estimatedMinutes: 7,
+  principleOptions: [
+    { id: "third", text: "동전을 3무더기로 나눠 두 무더기를 저울에 올리면, 한 번에 위조가 어느 '3분의 1'에 있는지 좁혀진다 (그래서 저울질 수가 확 줄어든다)", correct: true },
+    { id: "pair", text: "동전을 2개씩 짝지어 하나하나 다 비교한다" },
+    { id: "look", text: "가장 가벼워 보이는 동전을 눈으로 고른다" },
+    { id: "hand", text: "저울 없이 손으로 무게를 느껴 고른다" },
+  ],
   originalProblemText:
     "여러 동전 가운데 위조 동전이 하나 있고, 위조 동전은 정상보다 '조금 가볍다'. 양팔 저울로 위조 동전을 찾아라. 동전 수에 따라 몇 번이면 되는지, 가장 효율적인 방법은 무엇인지 생각하라.",
   studentFriendlyText:
@@ -931,6 +955,12 @@ PROBLEMS.push({
 PROBLEMS.push({
   id: "B-07", sourceProblem: "5-23", sourcePage: 98, world: "algorithm",
   title: "하노이 타워", engine: "hanoi", difficulty: "normal", estimatedMinutes: 8,
+  principleOptions: [
+    { id: "recur", text: "원반 n개는 '위 n−1개 옮기고 → 큰 것 1개 옮기고 → n−1개를 다시 옮긴다'라서, 횟수가 2배씩+1로 늘어난다 (2ⁿ−1)", correct: true },
+    { id: "linear", text: "원반 개수만큼만 옮기면 된다 (n번)" },
+    { id: "bigfirst", text: "가장 큰 원반을 맨 먼저 목표 기둥에 옮기면 된다" },
+    { id: "any", text: "아무 순서로 옮겨도 최소 횟수는 똑같다" },
+  ],
   originalProblemText:
     "A,B,C 세 기둥에 원반이 A에 꽂혀 있다. 한 번에 하나의 원반만 옮길 수 있고, 큰 원반을 작은 원반 위에 놓을 수 없다. A의 원반을 모두 C로 옮기려면 최소 몇 번이면 되는가? 원반 2·3·4·5개에 대해 풀어보라.",
   studentFriendlyText:
@@ -1344,6 +1374,12 @@ PROBLEMS.push({
 PROBLEMS.push({
   id: "C-05", sourceProblem: "5-24", sourcePage: 100, world: "both",
   title: "다리 건너기", engine: "bridge", difficulty: "challenge", estimatedMinutes: 9,
+  principleOptions: [
+    { id: "slow2", text: "가장 느린 두 사람(5분·10분)을 '함께' 건너보내서, 느린 사람이 두 번 왔다 갔다 하지 않게 한다", correct: true },
+    { id: "fastalways", text: "무조건 가장 빠른 사람이 매번 손전등을 들고 왕복한다" },
+    { id: "onebyone", text: "한 명씩 차례대로 건넌다" },
+    { id: "slowlast", text: "가장 느린 사람을 맨 마지막에 혼자 보낸다" },
+  ],
   originalProblemText:
     "산악인 4명이 위험한 다리 앞에 있다. 다리는 한 번에 한 명 또는 두 명이 건널 수 있고, 손전등은 하나뿐이라 손전등이 있어야 건널 수 있다. 네 명의 건너는 시간은 1,2,5,10분이고, 두 명이 함께 건너면 느린 사람 속도로 건넌다. 네 명이 모두 건너는 최소 시간은? (19분은 답이 아니다)",
   studentFriendlyText:
@@ -1458,6 +1494,12 @@ PROBLEMS.push({
 PROBLEMS.push({
   id: "C-07", sourceProblem: "5-49", sourcePage: 111, world: "both",
   title: "폭탄 전략", engine: "nim", difficulty: "challenge", estimatedMinutes: 8,
+  principleOptions: [
+    { id: "mod4", text: "내가 가져간 뒤 남는 수를 항상 '4로 나누면 1이 남는 수(1,5,9,…,29)'로 만든다. 상대가 k개 가져가면 나는 (4−k)개를 가져가면 된다", correct: true },
+    { id: "always3", text: "무조건 한 번에 3개씩 가져간다" },
+    { id: "copy", text: "상대가 가져간 개수만큼 똑같이 따라 가져간다" },
+    { id: "moreless", text: "많이 남으면 많이, 적게 남으면 적게 가져간다" },
+  ],
   originalProblemText:
     "'폭탄 가져가기' 게임: 두 사람이 번갈아 폭탄을 가져가는데, 한 번에 1~3개까지 가져갈 수 있고, 맨 마지막 '빵' 폭탄을 가져가는 사람이 진다. 30개 폭탄에서 항상 이기는 전략을 설명하고, 먼저 하는 사람이 반드시 이기려면 처음에 몇 개를 가져가야 하는가?",
   studentFriendlyText:
@@ -1529,6 +1571,12 @@ PROBLEMS.push({
       { text: "모든 구간을 더하면 전체 나이와 같아야 함", fn: (x) => (x / 6 + x / 12 + x / 7 + 5 + x / 2 + 4) === x },
     ],
     answerKeys: ["84세"],
+    reasonOptions: [
+      { id: "lcm", text: "인생 구간이 1/6·1/12·1/7·1/2 분수라, 나이는 이 분모들의 공배수(84의 배수)여야 정수로 떨어진다", correct: true },
+      { id: "big", text: "오래 산 수학자니까 큰 수를 고른다" },
+      { id: "even", text: "'삶의 절반'이니 나이가 짝수이기만 하면 된다" },
+      { id: "add", text: "분수는 무시하고 5년+4년만 더해 본다" },
+    ],
   },
   hint1Observation: "각 구간이 1/6, 1/12, 1/7, 1/2 처럼 분수예요. 나이가 이 분모들로 '딱 나눠져야' 하지 않을까요?",
   hint2KeyCondition: "6, 12, 7, 2의 공배수 → 나이는 84의 배수여야 정수로 떨어져요.",
@@ -1591,6 +1639,12 @@ PROBLEMS.push({
       { text: "⑤전체 합=30", fn: (n) => String(n).split("").map(Number).reduce((a, b) => a + b, 0) === 30 },
     ],
     answerKeys: ["74658"],
+    reasonOptions: [
+      { id: "second", text: "③②④ 단서가 모두 '둘째 자리'로 연결돼, 둘째 자리를 구하면 나머지가 줄줄이 정해진다", correct: true },
+      { id: "first", text: "첫째 자리를 아무 수로 정하면 된다" },
+      { id: "one", text: "단서 하나(합=30)만 맞으면 답이다" },
+      { id: "brute", text: "00000~99999를 전부 넣어 본다" },
+    ],
   },
   hint1Observation: "어떤 단서가 '둘째 자리'만 정하면 다른 자리가 줄줄이 정해질까요?",
   hint2KeyCondition: "③,②,④가 모두 '둘째 자리'로 표현돼요. 둘째를 먼저 구하면 나머지가 정해져요.",
@@ -1694,7 +1748,13 @@ PROBLEMS.push({
     "또 다른 진법 나라예요! 두 계산이 모두 맞는 진법을 찾으면 그게 이 나라의 진법이에요.",
   conditions: ["두 계산이 모두 성립하는 진법", "자리값으로 해석"],
   irrelevantInformation: [], correctAnswers: ["5"], equivalentAnswers: ["5진법"],
-  config: { kind: "base", equations: ["12 + 13 = 30", "10 * 4 = 40"], bases: [4, 5, 6, 7, 8, 9, 10], answerBase: 5 },
+  config: { kind: "base", equations: ["12 + 13 = 30", "10 * 4 = 40"], bases: [4, 5, 6, 7, 8, 9, 10], answerBase: 5,
+    reasonOptions: [
+      { id: "eq", text: "자리값을 b로 두면 12+13=30이 2b+5=3b가 되어 b=5, 다른 식으로 검증", correct: true },
+      { id: "four", text: "숫자 4가 있으니 진법은 무조건 4다" },
+      { id: "ten", text: "12, 13이 있으니 10진법이다" },
+      { id: "try", text: "아무 진법이나 넣어 맞으면 그만이다" },
+    ] },
   hint1Observation: "10진법이면 12+13=25인데 답이 30이래요. 자리값이 10이 아니라는 뜻!",
   hint2KeyCondition: "진법 b에서 12=b+2, 13=b+3, 30=3b.",
   hint3NextAction: "(b+2)+(b+3)=3b 를 b에 대해 풀어 보세요.",

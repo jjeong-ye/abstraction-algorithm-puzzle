@@ -422,10 +422,21 @@ function renderGame(stageId) {
     if (submitBtn) submitBtn.textContent = "✅ " + ((engineCtl && engineCtl.submitLabel) || "제출하기");
   }
 
+  let principleWrap = null;   // 도전 문제: '왜 이게 최선인가' 근거 선택 패널
   function doSubmit() {
     if (!engineCtl || !engineCtl.submit) { toast("제출할 수 없는 스테이지예요", "bad"); return; }
-    const res = engineCtl.submit();
+    let res = engineCtl.submit();
     if (res && res.notReady) { toast(res.message || "아직 제출할 수 없어요", "bad"); return; }
+    // 🤔 원리 근거(도전 문제): 풀이가 맞아도 '왜 이게 최선인지'를 골라야 통과
+    if (principleWrap) {
+      const sel = principleWrap.querySelector("input:checked");
+      if (!sel) { toast("🤔 '가장 좋은 이유(원리)'도 고른 뒤 제출하세요", "bad"); return; }
+      const opt = (p.principleOptions || []).find(o => o.id === sel.value);
+      const principleOk = !!(opt && opt.correct);
+      res = Object.assign({}, res, { answerText: (res.answerText || "") + " / 원리: " + (opt ? opt.text : "-") });
+      if (res.detail) res.detail = Object.assign({}, res.detail, { 원리: principleOk ? 100 : 40 });
+      if (res.isCorrect && !principleOk) { res.isCorrect = false; res.partial = true; toast("풀이는 맞았지만 '원리 근거'가 정확하지 않아요. 다시 생각해 볼까요?", "bad"); }
+    }
     const wasCleared = Store.getRecord(p.id).cleared;   // 첫 통과인지 판단용
     S.hasSubmitted = true; S.explanationUnlocked = true; S.isCorrect = !!res.isCorrect;
     S.submittedAnswer = res.answerText; S.submittedProcess = res.processTable; S.attemptCount++;
@@ -468,6 +479,11 @@ function renderGame(stageId) {
   ]);
 
   const goalTags = (p.learningGoals || []).map(g => el("span", { class: "chip", text: g }));
+  if (p.principleOptions && p.principleOptions.length) {
+    principleWrap = el("div", { class: "cond-cards", style: "margin-top:10px" });
+    principleWrap.appendChild(el("div", { class: "status-line", text: "🤔 이 방법이 '가장 좋은' 이유를 고른 뒤 제출하세요" }));
+    p.principleOptions.forEach(o => principleWrap.appendChild(el("label", { class: "cond" }, [el("input", { type: "radio", name: "principle", value: o.id }), el("span", { text: o.text })])));
+  }
   const submitBtn = el("button", { class: "btn green submit-btn", text: "✅ 제출하기",
     onclick: doSubmit, onkeydown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); doSubmit(); } } });
 
@@ -480,6 +496,7 @@ function renderGame(stageId) {
         el("div", { class: "problem-text", text: p.studentFriendlyText }),
         el("details", { style: "margin-top:8px" }, [el("summary", { text: "📜 교재 원문 보기" }), el("p", { class: "explain", text: p.originalProblemText })]),
         el("div", { style: "margin-top:6px" }, goalTags),
+        principleWrap,
         hintBox,
       ]),
       el("div", { class: "panel" }, [statusEl, engineHost, el("div", { class: "submit-bar" }, [submitBtn])]),

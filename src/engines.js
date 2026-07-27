@@ -43,26 +43,42 @@ ENGINES.deduce = function (host, problem) {
     condWrap.appendChild(card);
   });
   renderCands();
+  // 🤔 근거(핵심 아이디어) 고르기 — 답만이 아니라 '왜'를 생각하게 함
+  let reasonWrap = null;
+  if (cfg.reasonOptions && cfg.reasonOptions.length) {
+    reasonWrap = el("div", { class: "cond-cards" });
+    reasonWrap.appendChild(el("div", { class: "status-line", text: "🤔 이 답을 찾은 '핵심 아이디어'를 고르세요" }));
+    cfg.reasonOptions.forEach(r => reasonWrap.appendChild(el("label", { class: "cond" }, [el("input", { type: "radio", name: "dreason", value: r.id }), el("span", { text: r.text })])));
+  }
   host.append(el("p", { class: "status-line", text: "규칙을 적용해 안 맞는 후보를 지우고, 정답만 남긴 뒤 제출하세요." }),
     condWrap, el("div", { class: "status-line", text: "▼ 후보 (클릭해서 켜고 끄기)" }), candWrap);
+  if (reasonWrap) host.append(reasonWrap);
 
   return {
     submitLabel: "선택 제출하기",
-    restart: () => { state = cfg.candidates.map(c => ({ ...c, alive: true })); appliedLog.length = 0; document.querySelectorAll(".cond.used").forEach(c => c.classList.remove("used")); renderCands(); },
+    restart: () => { state = cfg.candidates.map(c => ({ ...c, alive: true })); appliedLog.length = 0; document.querySelectorAll(".cond.used").forEach(c => c.classList.remove("used")); if (reasonWrap) reasonWrap.querySelectorAll("input").forEach(i => i.checked = false); renderCands(); },
     submit: () => {
       // 찍기 방지: 조건 카드를 모두 적용해야 제출 가능(조건을 하나씩 적용해 후보를 줄이는 과정을 강제)
       const notApplied = cfg.tests.filter(t => !appliedLog.includes(t.text));
       if (notApplied.length) return { notReady: true, message: `아직 안 쓴 조건이 ${notApplied.length}개 있어요. 조건 카드를 모두 '거르기' 한 뒤 제출하세요.` };
       const alive = state.filter(s => s.alive).map(s => s.label);
       const ans = cfg.answerKeys.slice();
-      const isCorrect = alive.length === ans.length && ans.every(a => alive.includes(a));
-      const partial = !isCorrect && ans.every(a => alive.includes(a));
+      const pickOk = alive.length === ans.length && ans.every(a => alive.includes(a));
+      let reasonOk = true, reasonText = "";
+      if (reasonWrap) {
+        const r = reasonWrap.querySelector("input:checked");
+        if (!r) return { notReady: true, message: "🤔 '핵심 아이디어'도 고른 뒤 제출하세요." };
+        const ro = cfg.reasonOptions.find(x => x.id === r.value);
+        reasonOk = !!(ro && ro.correct); reasonText = ro ? ro.text : "";
+      }
+      const isCorrect = pickOk && reasonOk;
+      const partial = !isCorrect && (pickOk || reasonOk);
       return {
         isCorrect, partial,
-        answerText: `남긴 후보: ${alive.length ? alive.join(", ") : "(없음)"}`,
+        answerText: `남긴 후보: ${alive.length ? alive.join(", ") : "(없음)"}` + (reasonWrap ? ` / 핵심 아이디어: ${reasonText || "(미선택)"}` : ""),
         processTable: T(["적용한 규칙 순서"], appliedLog.length ? appliedLog.map(x => [x]) : [["(규칙을 적용하지 않음)"]]),
         moves: appliedLog.length,
-        detail: { 추상화: isCorrect ? 100 : 40, 알고리즘정확성: isCorrect ? 100 : 40, 효율성: isCorrect ? Math.max(50, 100 - Math.abs(appliedLog.length - cfg.tests.length) * 10) : 40 },
+        detail: { 추상화: reasonOk ? 100 : 40, 알고리즘정확성: pickOk ? 100 : 40, 효율성: pickOk ? Math.max(50, 100 - Math.abs(appliedLog.length - cfg.tests.length) * 10) : 40 },
       };
     },
   };
@@ -86,19 +102,36 @@ ENGINES.base = function (host, problem) {
     });
     scratch.innerHTML = `<b>${b}진법으로 계산하면:</b><br>` + parts.join("<br>") + "<br><i>세 줄이 모두 ✓ 인 진법을 제출하세요.</i>";
   } });
+  // 🤔 근거 고르기 — 진법을 '어떻게' 정했는지 생각하게 함
+  let reasonWrap = null;
+  if (cfg.reasonOptions && cfg.reasonOptions.length) {
+    reasonWrap = el("div", { class: "cond-cards" });
+    reasonWrap.appendChild(el("div", { class: "status-line", text: "🤔 진법을 어떻게 정했는지 고르세요" }));
+    cfg.reasonOptions.forEach(r => reasonWrap.appendChild(el("label", { class: "cond" }, [el("input", { type: "radio", name: "breason", value: r.id }), el("span", { text: r.text })])));
+  }
   host.append(el("p", { class: "problem-text", text: cfg.equations.join("\n") }),
-    el("p", { class: "status-line", text: "세 계산이 모두 성립하는 '밑(진법)'을 찾아 직접 입력하고 제출하세요." }),
+    el("p", { class: "status-line", text: "주어진 계산이 모두 성립하는 '밑(진법)'을 찾아 직접 입력하고 제출하세요." }),
     el("div", { class: "board" }, [input]), calcBtn, scratch);
+  if (reasonWrap) host.append(reasonWrap);
   return {
     submitLabel: "답 제출하기",
-    restart: () => { input.value = ""; scratch.style.display = "none"; },
+    restart: () => { input.value = ""; scratch.style.display = "none"; if (reasonWrap) reasonWrap.querySelectorAll("input").forEach(i => i.checked = false); },
     submit: () => {
       if (input.value === "") return { notReady: true, message: "밑(진법)을 입력한 뒤 제출하세요." };
       const b = Number(input.value);
-      const isCorrect = b === cfg.answerBase;
-      return { isCorrect, answerText: `내가 찾은 진법: ${b}진법`,
-        processTable: T(["확인"], [[`${b}진법으로 세 식 계산을 확인함`]]),
-        detail: { 추상화: isCorrect ? 100 : 40, 알고리즘정확성: isCorrect ? 100 : 40 } };
+      const numOk = b === cfg.answerBase;
+      let reasonOk = true, reasonText = "";
+      if (reasonWrap) {
+        const r = reasonWrap.querySelector("input:checked");
+        if (!r) return { notReady: true, message: "🤔 진법을 정한 '근거'도 고른 뒤 제출하세요." };
+        const ro = cfg.reasonOptions.find(x => x.id === r.value);
+        reasonOk = !!(ro && ro.correct); reasonText = ro ? ro.text : "";
+      }
+      const isCorrect = numOk && reasonOk;
+      const partial = !isCorrect && (numOk || reasonOk);
+      return { isCorrect, partial, answerText: `내가 찾은 진법: ${b}진법` + (reasonWrap ? ` / 근거: ${reasonText || "(미선택)"}` : ""),
+        processTable: T(["확인"], [[`${b}진법으로 식 계산을 확인함`]]),
+        detail: { 추상화: reasonOk ? 100 : 40, 알고리즘정확성: numOk ? 100 : 40 } };
     },
   };
 };
