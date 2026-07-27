@@ -3,6 +3,37 @@ import { WORLDS, PROBLEMS } from "./data.js";
 import { Store } from "./storage.js";
 import { el, clear, beep, toast, modal, winBurst, renderFullExplanation, renderProcessTable } from "./ui.js";
 import { ENGINES } from "./engines.js";
+import { LIVE } from "./live-config.js";
+
+// 링크 파라미터: ?class=2-3 (반), ?g=방코드 (교사별 네임스페이스), ?api=... (고급: 자체 백엔드)
+const _params = new URLSearchParams(location.search);
+const URL_CLASS = _params.get("class") || "";
+const URL_GROUP = _params.get("g") || "";
+const URL_API = _params.get("api") || "";
+function liveApiUrl() { return URL_API || LIVE.apiUrl || ""; }
+// 이 기기(교사) 또는 링크로 받은 방 코드
+function liveGroup() { return URL_GROUP || Store.getGroup() || ""; }
+function genGroup() { return Math.random().toString(36).slice(2, 8); }  // 6자리 임의 코드
+// 서버에 저장/조회할 코드 = 방 코드 하나로 구분 (학교/반/교사 모두 이걸로 갈라짐)
+function liveCode() { return liveGroup() || LIVE.classCode || ""; }
+
+// ---------------- 라이브 현황판으로 '문 열림' 이벤트 전송 (선택) ----------------
+// 서버 응답을 기다리지 않고 쏘기만 한다(fire-and-forget). 실패해도 게임엔 영향 없음.
+function sendOpenEvent({ worldName, room, title }) {
+  const api = liveApiUrl();
+  if (!LIVE.enabled || !api) return;
+  try {
+    const q = new URLSearchParams({
+      action: "open",
+      code: liveCode(),
+      name: Store.getPlayer() || "익명",
+      world: worldName || "",
+      room: String(room ?? ""),
+      title: title || "",
+    });
+    fetch(`${api}?${q.toString()}`, { method: "GET", mode: "no-cors", cache: "no-store" }).catch(() => {});
+  } catch { /* 무시 */ }
+}
 
 const main = document.getElementById("main");
 const titleEl = document.getElementById("topbar-title");
@@ -30,11 +61,9 @@ function computeLocks(list) {
   });
 }
 
-// 교사 모드: 학생과 같은 사이트에서 '🎓 교사' 버튼 + 코드로 켠다.
-// (클라이언트 측 간이 잠금 — 진짜 보안은 아니지만 학생이 무심코 정답을 보는 것을 막는 용도)
-// ▼▼▼ 교사 코드: 원하는 값으로 바꾸세요 (학생이 모르게) ▼▼▼
-const TEACHER_CODE = "7755";
-// ▲▲▲ 여기만 고치면 됩니다 ▲▲▲
+// 교사 모드: 학생과 같은 사이트에서 '🎓 교사용'을 누르고 코드로 켠다.
+// 코드는 공용 고정값이 아니라, 각 선생님이 이 기기에서 '처음' 들어올 때 직접 정하고
+// 그 기기(브라우저)에만 저장된다. (클라이언트 측 간이 잠금 — 학생이 무심코 정답을 보는 것 방지)
 function teacherOn() { return Store.getSettings().teacher === true; }
 
 // ---------------- 설정/상단바 ----------------
@@ -45,70 +74,98 @@ function applySettings() {
   sound.setAttribute("aria-pressed", s.sound ? "true" : "false");
   sound.querySelector(".ico").textContent = s.sound ? "🔊" : "🔇";
   document.getElementById("btn-motion").setAttribute("aria-pressed", s.motion ? "true" : "false");
-  const tb = document.getElementById("btn-teacher");
-  if (tb) {
-    tb.setAttribute("aria-pressed", s.teacher ? "true" : "false");
-    tb.querySelector(".lbl").textContent = s.teacher ? "교사 ✓" : "교사";
-    tb.classList.toggle("teacher-on", !!s.teacher);
-  }
 }
-document.getElementById("btn-home").onclick = () => go({ screen: Store.getPlayer() ? "worlds" : "start" });
+// 기본 URL은 교사만 접속(학생은 QR/링크). 그래서 홈=교사 허브, ?g= 로 온 학생은 시작화면.
+document.getElementById("btn-home").onclick = () => go({ screen: URL_GROUP ? "start" : "teacher" });
 document.getElementById("btn-sound").onclick = () => { Store.setSetting("sound", !Store.getSettings().sound); applySettings(); beep("click"); };
 document.getElementById("btn-motion").onclick = () => { Store.setSetting("motion", !Store.getSettings().motion); applySettings(); };
-if (document.getElementById("btn-teacher")) document.getElementById("btn-teacher").onclick = () => {
-  if (Store.getSettings().teacher) {
-    // 켜져 있으면 바로 끈다
-    Store.setSetting("teacher", false); applySettings();
-    toast("교사 모드 꺼짐");
-  } else {
-    // 꺼져 있으면 코드 확인 후 켠다
-    const code = prompt("교사 코드를 입력하세요\n(잊으셨다면: src/app.js 맨 위 TEACHER_CODE 값 확인)");
-    if (code == null) return; // 취소
-    if (code.trim() === TEACHER_CODE) {
-      Store.setSetting("teacher", true); applySettings();
-      toast("교사 모드 켜짐: 모든 해설을 바로 볼 수 있어요", "good");
-    } else {
-      toast("교사 코드가 올바르지 않아요", "bad");
-      return;
-    }
-  }
-  // 현재 화면 다시 그려 해설 버튼 상태 반영
-  if (route.screen === "stages") renderStages(route.world);
-  else if (route.screen === "worlds") renderWorlds();
-  else if (route.screen === "game") renderGame(route.stageId);
-};
+
 document.getElementById("btn-fullscreen").onclick = () => {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
   else document.exitFullscreen?.();
 };
-
 // ---------------- 라우팅 ----------------
 function go(r) { route = r; render(); window.scrollTo(0, 0); }
 function render() {
   clear(main);
   applySettings();
+  if (route.screen === "teacher") return renderTeacherHub();
   if (route.screen === "start") return renderStart();
   if (route.screen === "worlds") return renderWorlds();
   if (route.screen === "stages") return renderStages(route.world);
   if (route.screen === "game") return renderGame(route.stageId);
 }
 
-// ---------------- 시작 화면 ----------------
+// ---------------- 교사 허브 (기본 URL 첫 화면 · 교사 전용) ----------------
+function hubBtn(emoji, title, desc, onclick) {
+  return el("button", { class: "hub-card", onclick }, [
+    el("div", { class: "hub-emoji", text: emoji }),
+    el("div", { class: "hub-text" }, [
+      el("div", { class: "hub-title", text: title }),
+      el("div", { class: "hub-desc", text: desc }),
+    ]),
+  ]);
+}
+function openBoardNow() {
+  let g = liveGroup(); if (!g) { g = genGroup(); Store.setGroup(g); }
+  beep("click");
+  let url = "live/board.html?g=" + encodeURIComponent(g);
+  if (URL_API) url += "&api=" + encodeURIComponent(URL_API);
+  window.open(url, "_blank", "noopener");
+}
+function renderTeacherHub() {
+  titleEl.textContent = "UNLOCK";
+  Store.setSetting("teacher", true);                              // 교사 화면 = 정답·해설 보임 / 모든 문 열림
+  if (!Store.getPlayer()) Store.setPlayer("선생님");
+  if (LIVE.enabled && !liveGroup()) Store.setGroup(genGroup());   // 방 코드 자동 준비 (현황판/QR 분류용)
+  main.append(el("div", { class: "hero" }, [
+    el("div", { class: "mascot", text: "🗝️" }),
+    el("h1", { text: "🔓 UNLOCK" }),
+    el("p", { text: "🎓 교사용 · 추상화와 알고리즘 퍼즐 방탈출" }),
+    el("div", { class: "hub-grid" }, [
+      hubBtn("📘", "사용 방법", "수업에서 쓰는 법", openTeacherGuide),
+      LIVE.enabled ? hubBtn("🔑", "방 코드 · 학생 접속", "방 코드 / QR / 링크", openTeacherSetup) : null,
+      LIVE.enabled ? hubBtn("📺", "현황판 열기", "프로젝터에 실시간 표시", openBoardNow) : null,
+      hubBtn("🎮", "게임 · 문제 풀이", "직접 풀기 + 정답·해설 보기", () => go({ screen: "worlds" })),
+    ]),
+    el("p", { class: "home-hint", text: "학생은 선생님이 준 QR·링크로 들어와요 🗝️" }),
+  ]));
+}
+
+// ---------------- 시작 화면 (기본 = 학생) ----------------
 function renderStart() {
   titleEl.textContent = "UNLOCK";
-  const input = el("input", { type: "text", value: Store.getPlayer(), maxlength: "20", placeholder: "이름 또는 번호", "aria-label": "학생 이름 또는 번호" });
-  const start = () => { const v = input.value.trim() || "탈출자"; Store.setPlayer(v); beep("good"); go({ screen: "worlds" }); };
+  const hasRoom = !!URL_GROUP;              // QR/링크로 방 코드를 받고 왔는가
+  if (hasRoom) Store.setGroup(URL_GROUP);   // 링크의 방 코드를 저장
+  // 앞서 교사가 쓴 기기라면 닉네임에 '선생님'이 남아있을 수 있으니 그때만 비운다.
+  const prevName = Store.getPlayer() === "선생님" ? "" : Store.getPlayer();
+  const input = el("input", { type: "text", value: prevName, maxlength: "20", placeholder: "예: 22번, 3모둠, 번개", "aria-label": "닉네임·번호·모둠명" });
+  // 방 코드 하나로 반/학교를 구분한다. 학생은 선생님이 알려준 방 코드만 입력(반 입력 불필요).
+  const roomInput = el("input", { type: "text", maxlength: "16", placeholder: "선생님이 알려준 방 코드",
+    value: Store.getGroup() || "", "aria-label": "방 코드" });
+  const start = () => {
+    Store.setSetting("teacher", false);     // 학생 세션 (공용 PC에서 정답 노출 방지)
+    const v = input.value.trim() || "탈출자"; Store.setPlayer(v);
+    if (LIVE.enabled) Store.setGroup(hasRoom ? URL_GROUP : roomInput.value.trim());
+    beep("good"); go({ screen: "worlds" });
+  };
   input.addEventListener("keydown", e => { if (e.key === "Enter") start(); });
+  roomInput.addEventListener("keydown", e => { if (e.key === "Enter") start(); });
   const mascot = el("div", { class: "mascot", text: "🗝️", title: "눌러봐!", role: "button", tabindex: "0",
     onclick: () => { beep("good"); mascot.classList.remove("happy"); void mascot.offsetWidth; mascot.classList.add("happy"); },
     onkeydown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mascot.click(); } } });
+  // 방 코드 입력칸: 링크(QR)로 코드를 받고 왔으면 숨기고 닉네임만. (LIVE 켜졌고 코드 없을 때만 노출)
+  const showRoom = LIVE.enabled && !hasRoom;
   main.appendChild(el("div", { class: "hero" }, [
     mascot,
     el("h1", { text: "🔓 UNLOCK" }),
     el("p", { text: "추상화와 알고리즘 퍼즐로 잠긴 문을 하나씩 열어라!" }),
     el("p", { text: "문제를 풀면 다음 문이 열려요. 모든 문을 열고 탈출에 성공해 봐요 🗝️" }),
     el("div", { class: "namebox" }, [
-      el("label", { text: "🙋 이름/번호를 입력하세요", for: "" }), input,
+      showRoom ? el("label", { text: "🔑 방 코드 (선생님이 알려줘요)" }) : null,
+      showRoom ? roomInput : null,
+      el("label", { text: "🙋 닉네임 · 번호 · 모둠명", style: showRoom ? "margin-top:12px" : "" }), input,
+      LIVE.enabled ? el("p", { class: "name-guide", text: "⚠️ 실명은 쓰지 마세요. 친구가 기분 나쁠 수 있는 별명도 안 돼요. (닉네임·번호·모둠명으로!)" }) : null,
       el("div", { style: "margin-top:12px" }, [el("button", { class: "btn", text: "🚪 탈출 시작!", onclick: start })]),
     ]),
     el("p", { style: "font-size:.85rem;color:#888", text: "기록은 이 브라우저에만 저장돼요(localStorage)." }),
@@ -240,6 +297,95 @@ function openExplanation(problem, teacher) {
   modal("📖 " + problem.title + " · 해설", content);
 }
 
+// ---------------- 교사 모드 켤 때: 수업 준비 (방 코드 + 반 + 학생 링크) ----------------
+function openTeacherSetup() {
+  const studentLink = () => location.origin + location.pathname + "?g=" + encodeURIComponent(liveGroup());
+  const codeEl = el("b", { text: liveGroup() });
+  const qrImg = el("img", { class: "qr", alt: "학생 접속 QR 코드", width: "220", height: "220" });
+  const refreshQR = () => { qrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=" + encodeURIComponent(studentLink()); };
+  const regen = () => { Store.setGroup(genGroup()); codeEl.textContent = liveGroup(); refreshQR(); toast("새 방 코드가 만들어졌어요", "good"); };
+  const copyLink = () => { if (navigator.clipboard) navigator.clipboard.writeText(studentLink()).then(() => toast("학생 링크가 복사됐어요!", "good")).catch(() => {}); };
+  refreshQR();
+  const content = el("div", { class: "teacher-guide" }, [
+    el("div", { class: "roomcode" }, [el("span", { text: "🔑 방 코드" }), codeEl]),
+    el("p", { style: "text-align:center;color:var(--ink-soft);margin:6px 0", text: "학생은 QR을 찍거나, 방 코드를 직접 입력하면 돼요." }),
+    el("div", { style: "text-align:center" }, [qrImg]),
+    el("div", { style: "display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap" }, [
+      el("button", { class: "btn ghost small", text: "🔄 새 코드 (다른 반)", onclick: regen }),
+      el("button", { class: "btn ghost small", text: "🔗 링크 복사", onclick: copyLink }),
+    ]),
+  ]);
+  modal("🔑 방 코드 · 학생 접속", content);
+}
+
+// ---------------- 교사용 안내 (라이브 현황판 사용법 + 시트 나눠주기) ----------------
+function openTeacherGuide() {
+  const box = el("div", { class: "explain teacher-guide" });
+  const step = (n, html) => el("div", { class: "guide-step" }, [el("span", { class: "gnum", text: n }), el("div", { html })]);
+
+  // ===== 매 수업 3단계 =====
+  box.append(el("div", { class: "guide-hero" }, [
+    el("div", { class: "guide-title", text: "🎬 매 수업, 이 3가지만!" }),
+    step("1", "이 사이트 주소를 열면 <b>교사용 화면(4개 버튼)</b>이 바로 나와요 (이 주소는 선생님만 접속)"),
+    step("2", "<b>🔑 방 코드·학생 접속</b>에서 <b>QR</b>를 프로젝터에 띄워 학생이 찍게 하고, <b>📺 현황판 열기</b>도 함께"),
+    step("3", "학생은 QR·링크로 들어와 <b>닉네임</b>(실명 ❌)만 넣고 바로 문제 풀기"),
+    el("p", { class: "guide-tip", html: "맞히면 이름이 반짝여요 · <b>오늘 기록만</b> 나와서 초기화 불필요 · 다른 반은 방 코드 창의 <b>🔄 새 코드</b> 또는 현황판 <b>⚙️ 방 코드</b>" }),
+  ]));
+
+  // ===== 방 코드가 하는 일 =====
+  box.append(el("div", { class: "guide-title2", text: "🔑 방 코드가 뭐예요?" }));
+  box.append(el("ul", {}, [
+    el("li", { html: "<b>QR·링크에 이미 방 코드가 들어 있어요</b>(<code>?g=코드</code>). 학생은 찍기만 하면 코드가 자동 입력돼서 <b>닉네임만</b> 쓰면 돼요." }),
+    el("li", { html: "방 코드는 <b>현황판(구글시트)에서 어느 교실 기록인지 분류</b>하는 값이에요. 방 코드가 다르면 <b>학교·반끼리 절대 안 섞여요.</b>" }),
+    el("li", { html: "다른 반 수업이면 방 코드 창의 <b>🔄 새 코드</b>로 새 QR을 만들면 돼요." }),
+  ]));
+
+  // ===== 다른 선생님께 나눠주기 (설정 0) =====
+  box.append(el("div", { class: "guide-title2", text: "🤝 다른 선생님께 나눠주기" }));
+  box.append(el("div", { class: "guide-setup" }, [
+    el("p", { html: "<b>이 사이트 링크만</b> 보내주면 끝이에요. 받은 선생님은 설정·배포·코드 수정 <b>전혀 없이</b> 바로 써요." }),
+    el("ol", {}, [
+      el("li", { html: "받은 선생님이 사이트를 열면 바로 <b>교사용 화면</b>이 뜨고 <b>자기만의 방 코드</b>가 자동으로 생겨요." }),
+      el("li", { html: "그 방 코드(QR)를 자기 반 학생에게 보여주면 끝. 방 코드가 다르니 <b>학교·반끼리 절대 안 섞여요.</b>" }),
+    ]),
+  ]));
+
+  // ===== 개인정보 =====
+  box.append(el("div", { class: "guide-title2", text: "🔒 기록·개인정보" }));
+  box.append(el("ul", {}, [
+    el("li", { html: "쌓이는 정보는 <b>닉네임 + 몇 번 문을 열었나</b> 뿐이에요(성적·실명 아님). 학생에게 <b>실명 금지</b>를 안내하세요." }),
+    el("li", { html: "현황판은 <b>오늘 기록만</b> 보여줘서 매번 지울 필요가 없어요." }),
+  ]));
+
+  // ===== 고급(접이식): 자기 기록 시트 따로 쓰기 =====
+  const apiIn = el("input", { class: "pw-input", style: "text-align:left;letter-spacing:0;font-size:1rem", placeholder: "배포 주소 (.../exec)", value: URL_API || "" });
+  const out = el("textarea", { class: "reflect", readonly: "true", rows: "2", placeholder: "여기에 링크가 만들어져요" });
+  const makeLink = () => {
+    if (!apiIn.value.trim()) { toast("먼저 배포 주소(.../exec)를 넣어주세요", "bad"); return; }
+    const base = location.origin + location.pathname;
+    const link = base + "?api=" + encodeURIComponent(apiIn.value.trim());
+    out.value = link;
+    if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => toast("링크가 복사됐어요", "good")).catch(() => {});
+  };
+  const adv = el("details", { class: "guide-more" }, [
+    el("summary", { text: "🛠 (고급) 기록을 내 구글시트에 따로 모으고 싶다면" }),
+    el("div", { class: "guide-more-body" }, [
+      el("p", { html: "기본은 공용 기록판이라 <b>안 해도 돼요.</b> 우리 학교 기록을 완전히 분리하고 싶을 때만 하세요." }),
+      el("ol", {}, [
+        el("li", { html: "구글시트 만들고 <b>Apps Script</b> 에 <code>live/apps-script.js</code> 붙여넣어 <b>웹 앱 배포</b> → <code>.../exec</code> 복사 (자세힌 시트 <b>📖 사용안내</b>)" }),
+        el("li", { html: "아래에 그 주소를 넣고 <b>[링크 만들기]</b> → 이 링크로 접속하면 그 시트에 저장돼요." }),
+      ]),
+      LIVE.templateCopyUrl ? el("button", { class: "btn small", text: "📄 기록용 시트 사본 만들기", onclick: () => window.open(LIVE.templateCopyUrl, "_blank", "noopener") }) : null,
+      el("div", { class: "linkgen" }, [apiIn, el("button", { class: "btn small", text: "🔗 링크 만들기 + 복사", onclick: makeLink }), out]),
+    ]),
+  ]);
+  box.append(adv);
+
+  box.append(el("p", { class: "guide-foot", html: "라이브 기능 끄기: <code>src/live-config.js</code> 의 <b>enabled: false</b>" }));
+
+  modal("📘 교사 사용 안내", box);
+}
+
 // ---------------- 게임 셸 ----------------
 function renderGame(stageId) {
   const p = PROBLEMS.find(x => x.id === stageId);
@@ -281,6 +427,7 @@ function renderGame(stageId) {
     if (!engineCtl || !engineCtl.submit) { toast("제출할 수 없는 스테이지예요", "bad"); return; }
     const res = engineCtl.submit();
     if (res && res.notReady) { toast(res.message || "아직 제출할 수 없어요", "bad"); return; }
+    const wasCleared = Store.getRecord(p.id).cleared;   // 첫 통과인지 판단용
     S.hasSubmitted = true; S.explanationUnlocked = true; S.isCorrect = !!res.isCorrect;
     S.submittedAnswer = res.answerText; S.submittedProcess = res.processTable; S.attemptCount++;
     const detail = res.detail || {};
@@ -297,6 +444,12 @@ function renderGame(stageId) {
       winBurst();
       const nxt = nextStage(p);
       if (nxt && !Store.getRecord(nxt.id).cleared) toast("🔓 다음 문이 열렸어요!", "good");
+      if (!wasCleared) {   // 첫 통과일 때만 현황판에 알림 (재도전 스팸 방지)
+        const wList = stagesOfWorld(p.world);
+        const room = wList.findIndex(x => x.id === p.id) + 1;
+        const wName = (WORLDS.find(x => x.id === p.world) || {}).name || "";
+        sendOpenEvent({ worldName: wName, room, title: p.title });
+      }
     }
     explainBtn.disabled = false;
     renderResult(p, res, score);
@@ -410,4 +563,5 @@ function nextStage(problem) {
 }
 
 // ---------------- 시작 ----------------
-go({ screen: Store.getPlayer() ? "worlds" : "start" });
+// QR/링크(?g=코드)면 학생 시작화면(닉네임만). 아니면(기본 URL=교사) 바로 교사 허브.
+go({ screen: URL_GROUP ? "start" : "teacher" });

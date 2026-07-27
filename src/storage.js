@@ -16,6 +16,13 @@ export const Store = {
   getPlayer() { return this.data.player || ""; },
   setPlayer(name) { this.data.player = name; this._flush(); },
 
+  getClass() { return this.data.klass || ""; },
+  setClass(c) { this.data.klass = c; this._flush(); },
+
+  // 방 코드(그룹): 교사별로 자동 생성해 현황판(시트)에서 교실 기록이 안 섞이게 분류하는 값
+  getGroup() { return this.data.group || ""; },
+  setGroup(g) { this.data.group = g; this._flush(); },
+
   getSettings() {
     return Object.assign({ sound: true, motion: false, teacher: false }, this.data.settings || {});
   },
